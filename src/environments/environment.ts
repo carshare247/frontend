@@ -2,7 +2,7 @@ export const environment = {
   production: false,
   nativePushEnabled: true,
   // apiBaseUrl: 'http://localhost:8080/api',
-  apiBaseUrl: 'https://disciplined-caring-production-e7fd.up.railway.app/api',
+  apiBaseUrl: 'https://alluring-miracle-production-3461.up.railway.app/api',
   vapidPublic: 'BNbFlsJ2BU9ZVnOG2XEfhF6yZOT-KFKhLDN5EIl_CuhZ2XmdDzn95x_qqpsUs0dX8vWvQDEYHvhGgV9tPm5uiwo',
   firebase: {
     apiKey: 'AIzaSyCcEi3Yt_oGlU_AZu4qQ7YEfICFZljdRDY',
