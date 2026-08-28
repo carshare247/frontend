@@ -4,9 +4,10 @@ import { Observable, map } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
+import { VerificationStatus, normalizeVerificationStatus } from './verification-state';
 
 export type VerificationRole = 'PASSENGER' | 'OWNER';
-export type VerificationStatus = 'PENDING_VERIFICATION' | 'VERIFIED' | 'REJECTED' | 'IN_REVIEW';
+export { VerificationStatus } from './verification-state';
 
 @Injectable({ providedIn: 'root' })
 export class DiditVerificationService {
@@ -14,7 +15,7 @@ export class DiditVerificationService {
   constructor(private http: HttpClient) {}
 
   createSession(role: VerificationRole): Observable<{ sessionId: string; verificationUrl: string; status: string }> {
-    return this.http.post<any>(`${this.apiUrl}/session`, null, { params: { role } }).pipe(map(response => response.data));
+    return this.http.post<any>(`${this.apiUrl}/session`, null, { params: { role } }).pipe(map(response => ({ ...response.data, status: normalizeVerificationStatus(response.data?.status) })));
   }
 
   async openVerification(verificationUrl: string): Promise<void> {
@@ -26,6 +27,6 @@ export class DiditVerificationService {
   }
 
   getStatus(): Observable<{ status: VerificationStatus; sessionId: string }> {
-    return this.http.get<any>(`${this.apiUrl}/status`).pipe(map(response => response.data));
+    return this.http.get<any>(`${this.apiUrl}/status`).pipe(map(response => ({ ...response.data, status: normalizeVerificationStatus(response.data?.status) })));
   }
 }

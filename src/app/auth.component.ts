@@ -330,8 +330,8 @@ export class AuthComponent {
     this.auth.authenticate('register', 'passenger', this.mobile, '', this.dateOfBirth, this.name, this.gender, this.photoData || undefined, this.firebaseUid).subscribe({
       next: (session) => {
         this.mobileVerificationService.verifyMobileOnBackend(session.id, this.firebaseUid!, this.mobile).subscribe({
-          next: () => { this.initializeSessionServices(); this.verifyIdentity('PASSENGER'); },
-          error: () => { this.initializeSessionServices(); this.verifyIdentity('PASSENGER'); }
+          next: () => { this.auth.save({ ...session, mobileVerified: true }); this.initializeSessionServices(); this.router.navigateByUrl('/home'); },
+          error: () => { this.initializeSessionServices(); this.router.navigateByUrl('/home'); }
         });
       },
       error: (error) => this.showAuthError(error, 'Unable to register.')
@@ -367,16 +367,6 @@ export class AuthComponent {
   onGovernmentIdSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     this.governmentIdProof = input.files?.[0] || null;
-  }
-
-  private verifyIdentity(role: 'OWNER' | 'PASSENGER') {
-    this.didit.createSession(role).subscribe({
-      next: ({ verificationUrl }) => { void this.didit.openVerification(verificationUrl); },
-      error: (error) => {
-        const message = error?.error?.error?.message || 'Unable to start identity verification. Please try again.';
-        this.toast.show(message, 'error');
-      }
-    });
   }
 
   openForm(mode: 'login' | 'register') {

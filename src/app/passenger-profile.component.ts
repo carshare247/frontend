@@ -55,7 +55,7 @@ import { firstValueFrom } from 'rxjs';
         <span *ngIf="mobileVerified" class="badge badge-success">✅ Mobile Verified</span>
         <span *ngIf="!mobileVerified && mobileVerificationStatus !== null" class="badge badge-error">❌ Mobile Not Verified</span>
         <span *ngIf="mobileVerificationStatus?.verifiedDate" class="muted-small">since {{ mobileVerificationStatus.verifiedDate | date:'mediumDate' }}</span>
-        <span *ngIf="diditStatus === 'VERIFIED'" class="badge badge-success">✅ Documents Verified</span>
+        <span *ngIf="diditStatus === 'APPROVED'" class="badge badge-success">✅ Documents Verified</span>
       </div>
 
       <hr />
@@ -155,6 +155,7 @@ export class PassengerProfileComponent {
         next: (status) => {
           this.mobileVerificationStatus = status;
           this.mobileVerified = status?.verified === true || status?.mobileVerified === true || s.mobileVerified === true;
+          if (this.mobileVerified) this.auth.save({ ...(this.auth.current || s), mobileVerified: true });
         },
         error: (error) => {
           console.error('Failed to load mobile verification status:', error);

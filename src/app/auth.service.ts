@@ -14,6 +14,7 @@ export interface UserSession {
   name?: string;
   profilePhoto?: string;
   mobileVerified?: boolean;
+  verificationStatus?: 'NOT_STARTED' | 'INITIATED' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED';
 }
 
 @Injectable({ providedIn: 'root' })
@@ -88,7 +89,7 @@ export class AuthService {
         ? rawProfilePhoto
         : `${base}/files/${rawProfilePhoto.replace(/^\/?files\//i, '')}`)
       : undefined;
-    const session: UserSession = { id: token.userId, role: role as any, mobile: sanitizeMobile(token.mobile), ownerId: token.ownerId || undefined, name: token.name || undefined, profilePhoto };
+    const session: UserSession = { id: token.userId, role: role as any, mobile: sanitizeMobile(token.mobile), ownerId: token.ownerId || undefined, name: token.name || undefined, profilePhoto, mobileVerified: token.mobileVerified === true, verificationStatus: token.verificationStatus || 'NOT_STARTED' };
     if (token.gender) (session as any).gender = token.gender;
     this.save(session);
     return session;

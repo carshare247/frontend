@@ -10,8 +10,8 @@ import { DiditVerificationService, VerificationRole, VerificationStatus } from '
   imports: [CommonModule],
   template: `<section class="card verification-status">
     <h1>Identity verification</h1>
-    <p *ngIf="status === 'PENDING_VERIFICATION' || status === 'IN_REVIEW'">Your verification is being reviewed. This page will update automatically.</p>
-    <p *ngIf="status === 'VERIFIED'" class="success">Identity verified successfully.</p>
+    <p *ngIf="status === 'INITIATED' || status === 'UNDER_REVIEW'">Your verification is being reviewed. This page will update automatically.</p>
+    <p *ngIf="status === 'APPROVED'" class="success">Identity verified successfully.</p>
     <p *ngIf="status === 'REJECTED'" class="error">Identity verification was declined. Start again to retry.</p>
     <button class="btn btn-primary" *ngIf="status === 'REJECTED'" (click)="retry()">Verify again</button>
     <button class="btn btn-secondary" (click)="continueToDashboard()">Continue</button>
@@ -19,7 +19,7 @@ import { DiditVerificationService, VerificationRole, VerificationStatus } from '
   styles: [`.verification-status{max-width:560px;margin:40px auto;text-align:center}.success{color:#15803d}.error{color:#b91c1c}`]
 })
 export class VerificationCallbackComponent implements OnDestroy {
-  status: VerificationStatus = 'PENDING_VERIFICATION';
+  status: VerificationStatus = 'NOT_STARTED';
   private role: VerificationRole = 'PASSENGER';
   private poll?: Subscription;
   constructor(private route: ActivatedRoute, private didit: DiditVerificationService, private router: Router) {
@@ -31,9 +31,9 @@ export class VerificationCallbackComponent implements OnDestroy {
   }
   private mapStatus(status: string): VerificationStatus {
     const normalized = status.toLowerCase().replace(/[_-]/g, ' ');
-    if (normalized === 'approved' || normalized === 'verified') return 'VERIFIED';
+    if (normalized === 'approved' || normalized === 'verified') return 'APPROVED';
     if (normalized === 'declined' || normalized === 'rejected') return 'REJECTED';
-    return 'IN_REVIEW';
+    return 'UNDER_REVIEW';
   }
   retry() { this.didit.createSession(this.role).subscribe(({ verificationUrl }) => { void this.didit.openVerification(verificationUrl); }); }
   continueToDashboard() { this.router.navigateByUrl(this.role === 'OWNER' ? '/owner/dashboard' : '/home'); }

@@ -21,7 +21,7 @@ import QRCode from 'qrcode';
 })
 export class AppComponent {
   title = 'CarShare247';
-  readonly androidAppUrl = 'https://github.com/E-commerce-multisite/apk/releases/download/v1.0/CarShare247.apk';
+  readonly androidAppUrl = 'https://github.com/carshare247/apk/releases/download/v_1.0/CarShare247.apk';
   showLaunchScreen = true;
   menuOpen = false;
   downloadAppVisible = false;

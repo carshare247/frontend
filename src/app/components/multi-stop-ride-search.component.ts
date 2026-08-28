@@ -5,6 +5,9 @@ import { Router } from '@angular/router';
 import { MultiStopRideService } from '../services/multi-stop-ride.service';
 import { MockDataService, LocationItem } from '../mock-data.service';
 import { ToastService } from '../toast.service';
+import { AuthService } from '../auth.service';
+import { DiditVerificationService } from '../services/didit-verification.service';
+import { getVerificationUIState, normalizeVerificationStatus, VerificationStatus } from '../services/verification-state';
 import { RideSearchRequest, RideSearchResult } from '../models/multi-stop-ride.model';
 
 /**
@@ -30,8 +33,17 @@ import { RideSearchRequest, RideSearchResult } from '../models/multi-stop-ride.m
         </div>
       </div>
 
+      <section *ngIf="!canSearch" class="card">
+        <h3>Complete Identity Verification to Search Rides</h3>
+        <p>{{ verificationMessage }}</p>
+        <button *ngIf="verificationState.canStart || verificationState.showRetry" class="btn btn-primary" type="button" (click)="startVerification()" [disabled]="verificationLoading">
+          {{ verificationState.showRetry ? 'Retry Verification' : 'Verify Identity' }}
+        </button>
+        <button *ngIf="verificationState.showRefresh" class="btn btn-secondary" type="button" (click)="refreshVerificationStatus()" [disabled]="verificationLoading">Refresh Status</button>
+      </section>
+
       <!-- Search Form -->
-      <section class="card search-card">
+      <section *ngIf="canSearch" class="card search-card">
         <h3>🔍 Find Multi-Stop Rides</h3>
         
         <form [formGroup]="searchForm" (ngSubmit)="onSearch()" class="search-form">
@@ -82,7 +94,7 @@ import { RideSearchRequest, RideSearchResult } from '../models/multi-stop-ride.m
       </section>
 
       <!-- Search Results -->
-      <div *ngIf="searchResults && !isLoading" class="results-section">
+      <div *ngIf="canSearch && searchResults && !isLoading" class="results-section">
         <div class="results-heading">
           <h3>Available rides ({{ searchResults.items.length }})</h3>
           <button type="button" class="btn btn-secondary btn-sm" (click)="searchResults = null">New search</button>
@@ -175,13 +187,13 @@ import { RideSearchRequest, RideSearchResult } from '../models/multi-stop-ride.m
       </div>
 
       <!-- Loading State -->
-      <div *ngIf="isLoading" class="loading">
+      <div *ngIf="canSearch && isLoading" class="loading">
         <div class="spinner"></div>
         <p>Searching for available rides...</p>
       </div>
 
       <!-- Initial State -->
-      <div *ngIf="!searchResults && !isLoading && !errorMessage" class="initial-state">
+      <div *ngIf="canSearch && !searchResults && !isLoading && !errorMessage" class="initial-state">
         <p>Fill in the search form above and click "Search" to find available rides.</p>
       </div>
     </div>
@@ -801,18 +813,46 @@ export class MultiStopRideSearchComponent implements OnInit {
   fromLocationSuggestions: LocationItem[] = [];
   toLocationSuggestions: LocationItem[] = [];
   activeLocationField: 'from' | 'to' | null = null;
+  verificationStatus: VerificationStatus = 'NOT_STARTED';
+  verificationLoading = false;
 
   constructor(
     private fb: FormBuilder,
     private rideService: MultiStopRideService,
     private rideLocations: MockDataService,
     private router: Router,
-    private toast: ToastService
+    private toast: ToastService,
+    private auth: AuthService,
+    private didit: DiditVerificationService
   ) {}
+
+  get verificationState() { return getVerificationUIState(this.verificationStatus); }
+  get canSearch() { return this.verificationState.isApproved; }
+  get verificationMessage() {
+    return this.verificationState.showProgress ? 'Identity Verification\nStatus: Under Review' : this.verificationState.showRetry ? 'Identity verification was rejected. Please retry.' : 'Verify your identity to unlock ride search.';
+  }
 
   ngOnInit() {
     this.initForm();
+    this.refreshVerificationStatus();
     this.loadLocations();
+  }
+
+  startVerification() {
+    this.verificationLoading = true;
+    this.didit.createSession('PASSENGER').subscribe({
+      next: ({ verificationUrl, status }) => { this.verificationStatus = normalizeVerificationStatus(status); this.verificationLoading = false; void this.didit.openVerification(verificationUrl); },
+      error: () => { this.verificationLoading = false; this.toast.show('Unable to start identity verification', 'error'); }
+    });
+  }
+
+  refreshVerificationStatus() {
+    if (!this.auth.current) return;
+    this.verificationLoading = true;
+    this.didit.getStatus().subscribe({
+      next: result => { this.verificationStatus = result.status; this.verificationLoading = false; if (!this.canSearch) this.searchResults = null; },
+      error: () => { this.verificationLoading = false; }
+    });
   }
 
   private loadLocations() {
@@ -865,6 +905,10 @@ export class MultiStopRideSearchComponent implements OnInit {
    * Perform search.
    */
   onSearch() {
+    if (!this.canSearch) {
+      this.toast.show('Complete identity verification before searching rides', 'warning');
+      return;
+    }
     if (!this.searchForm.valid) {
       this.errorMessage = 'Please fill all fields';
       return;

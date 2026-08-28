@@ -53,9 +53,9 @@ import { Browser } from '@capacitor/browser';
             <strong>Owner profile already created</strong>
             <p class="muted-small" style="margin:4px 0 0;">Your profile is saved. Continue with the subscription payment below.</p>
           </div>
-          <div *ngIf="verificationStatus" class="card" style="background:#eff6ff;border:1px solid #93c5fd;">
+          <div *ngIf="verificationStatus !== 'NOT_STARTED'" class="card" style="background:#eff6ff;border:1px solid #93c5fd;">
             <strong>Identity verification: {{ verificationLabel }}
-              <button type="button" class="btn btn-ghost btn-sm" (click)="refreshVerificationStatus()" [disabled]="verificationLoading" title="Refresh Didit status">↻ Refresh</button>
+              <button *ngIf="verificationStatus === 'INITIATED' || verificationStatus === 'UNDER_REVIEW'" type="button" class="btn btn-ghost btn-sm" (click)="refreshVerificationStatus()" [disabled]="verificationLoading" title="Refresh Didit status">↻ Refresh</button>
             </strong>
             <p class="muted-small" style="margin:4px 0 0;">{{ verificationMessage }}</p>
           </div>
@@ -94,7 +94,7 @@ import { Browser } from '@capacitor/browser';
             </button>
           </div>
           <div class="field" *ngIf="canStartDidit">
-            <button type="button" class="btn btn-secondary" (click)="verifyIdentity()" [disabled]="verificationLoading">{{ verificationLoading ? 'Opening verification...' : 'Verify identity via Didit' }}</button>
+            <button type="button" class="btn btn-secondary" (click)="verifyIdentity()" [disabled]="verificationLoading">{{ verificationLoading ? 'Opening verification...' : (verificationStatus === 'REJECTED' ? 'Retry verification' : 'Verify identity via Didit') }}</button>
           </div>
 
           <div class="field" *ngIf="!profileExists">
@@ -108,7 +108,7 @@ import { Browser } from '@capacitor/browser';
             </div>
           </div>
 
-          <button *ngIf="canStartPayment" class="btn btn-primary" (click)="paySubscription()" [disabled]="!mobileVerified || (profileExists && verificationStatus !== 'VERIFIED')">
+          <button *ngIf="canStartPayment" class="btn btn-primary" (click)="paySubscription()" [disabled]="!mobileVerified || (profileExists && verificationStatus !== 'APPROVED')">
             {{ profileExists ? '💳 Continue to payment' : 'Create profile and verify identity' }}
           </button>
 
@@ -145,21 +145,21 @@ export class OwnerComponent {
   ];
   selectedPreferences: string[] = [];
   latestSubscription: any;
-  verificationStatus: string = 'PENDING_VERIFICATION';
+  verificationStatus: string = 'NOT_STARTED';
   verificationSessionId = '';
   verificationLoading = false;
   private browserFinishedListener?: { remove: () => Promise<void> };
 
   get verificationLabel(): string {
-    return this.verificationStatus === 'VERIFIED' ? 'Approved' : this.verificationStatus === 'REJECTED' ? 'Declined' : 'Under review';
+    return this.verificationStatus === 'APPROVED' ? 'Approved' : this.verificationStatus === 'REJECTED' ? 'Rejected' : this.verificationStatus === 'NOT_STARTED' ? 'Not started' : 'Under review';
   }
 
   get verificationMessage(): string {
-    return this.verificationStatus === 'VERIFIED' ? 'Your identity is approved. Subscription payment is now available.' : this.verificationStatus === 'REJECTED' ? 'Didit declined the verification. Start verification again to retry.' : 'Complete the Didit check. We will update this page when a decision is received.';
+    return this.verificationStatus === 'APPROVED' ? 'Your identity is approved. Subscription payment is now available.' : this.verificationStatus === 'REJECTED' ? 'Didit declined the verification. Start verification again to retry.' : this.verificationStatus === 'NOT_STARTED' ? 'Start identity verification to continue.' : 'Your identity verification is being reviewed.';
   }
 
   get canStartDidit(): boolean {
-    return this.verificationStatus !== 'VERIFIED';
+    return this.verificationStatus === 'NOT_STARTED' || this.verificationStatus === 'REJECTED';
   }
   
   // OTP Verification state
@@ -287,7 +287,7 @@ export class OwnerComponent {
   }
 
   paySubscription() {
-    if (this.profileExists && this.verificationStatus !== 'VERIFIED') { this.toast.show('Complete Didit identity verification before payment.', 'warning'); return; }
+    if (this.profileExists && this.verificationStatus !== 'APPROVED') { this.toast.show('Complete Didit identity verification before payment.', 'warning'); return; }
     if (!this.mobile) { this.toast.show('Enter mobile number', 'warning'); return; }
     if (!this.profileExists && !this.photoData) { this.toast.show('Capture profile photo', 'warning'); return; }
 
@@ -322,7 +322,7 @@ export class OwnerComponent {
   verifyIdentity() {
     this.verificationLoading = true;
     this.didit.createSession('OWNER').subscribe({
-      next: ({ sessionId, verificationUrl }) => { this.verificationSessionId = sessionId; this.verificationStatus = 'PENDING_VERIFICATION'; this.verificationLoading = false; void this.didit.openVerification(verificationUrl); },
+      next: ({ sessionId, verificationUrl, status }) => { this.verificationSessionId = sessionId; this.verificationStatus = status; this.verificationLoading = false; void this.didit.openVerification(verificationUrl); },
       error: (error) => {
         this.verificationLoading = false;
         const message = error?.error?.error?.message || `Unable to start identity verification (${error?.status || 'network error'}).`;
@@ -334,7 +334,7 @@ export class OwnerComponent {
   refreshVerificationStatus() {
     this.verificationLoading = true;
     this.didit.getStatus().subscribe({
-      next: result => { this.verificationStatus = result.status; this.verificationSessionId = result.sessionId || ''; this.verified = result.status === 'VERIFIED'; this.verificationLoading = false; },
+      next: result => { this.verificationStatus = result.status; this.verificationSessionId = result.sessionId || ''; this.verified = result.status === 'APPROVED'; this.verificationLoading = false; },
       error: () => { this.verificationLoading = false; this.toast.show('Unable to refresh Didit status.', 'error'); }
     });
   }
