@@ -109,8 +109,6 @@ import { ToastService } from './toast.service';
 export class SubscriptionPlansComponent {
   plans: any[] = [];
   loading = false;
-  
-
   constructor(private data: MockDataService, private router: Router, private toast: ToastService) {
     this.loadPlans();
   }
@@ -128,7 +126,9 @@ export class SubscriptionPlansComponent {
         return;
       }
       this.router.navigate(['/owner/payment'], { queryParams: { subscriptionId: checkout.subscriptionId, amount: checkout.amount, currency: checkout.currency } });
-    }, error: () => this.toast.show('Unable to create checkout', 'error') });
+    }, error: () => {
+      this.toast.show('Unable to create checkout', 'error');
+    } });
   }
 
   featureList(p: any): string[] {

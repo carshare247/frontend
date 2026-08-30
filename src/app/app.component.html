@@ -125,11 +125,19 @@
 
   <div class="sub-banner" *ngIf="isOwnerPaymentInReview">
     <div class="container" style="display:flex;align-items:center;gap:10px;">
-      <span>✓ Your payment is being reviewed and will be approved in few minutes.</span>
+      <span>✓ Subscription payment is being verified by admin. Once approved, you can post rides and receive bookings.</span>
+      <button class="btn btn-secondary btn-sm" (click)="refreshOwnerSubscription()">Refresh status</button>
     </div>
   </div>
 
-  <div class="sub-banner" *ngIf="isOwnerUnverified && !isOwnerPaymentInReview">
+  <div class="sub-banner" *ngIf="isOwnerPaymentRejected">
+    <div class="container" style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+      <span>Payment was rejected by admin. Submit the UTR again for approval.</span>
+      <button class="btn btn-primary btn-sm" (click)="payNow()">Submit UTR again</button>
+    </div>
+  </div>
+
+  <div class="sub-banner" *ngIf="isOwnerUnverified && !isOwnerPaymentInReview && !isOwnerPaymentRejected">
     <div class="container" style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
       <span>⚠️ Subscription payment not done. Complete verification to post rides and receive bookings.</span>
       <button class="btn btn-primary btn-sm" (click)="payNow()">Pay & Verify</button>

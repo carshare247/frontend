@@ -89,6 +89,7 @@ export class OwnerCreateRideComponent {
   ownerId = '';
   verified = false;
   paymentInReview = false;
+  subscriptionApproved = false;
 
   constructor(private data: MockDataService, private auth: AuthService, private router: Router, private toast: ToastService) {
     const s = this.auth.current;
@@ -157,7 +158,10 @@ export class OwnerCreateRideComponent {
     if (!this.ownerId) { this.verified = false; return; }
     this.data.getOwnerById(this.ownerId).subscribe((owner) => { this.verified = !!owner?.verified; this.ownerGender = owner?.gender as any; });
     this.data.getMySubscriptions().subscribe((subscriptions) => {
-      this.paymentInReview = subscriptions[0]?.status === 'VERIFICATION_IN_PROGRESS';
+      const status = subscriptions[0]?.status;
+      this.paymentInReview = status === 'VERIFICATION_IN_PROGRESS';
+      this.subscriptionApproved = status === 'PAID';
+      this.verified = this.verified && this.subscriptionApproved;
     });
   }
 
@@ -166,8 +170,8 @@ export class OwnerCreateRideComponent {
   async createRide() {
     if (!this.ownerId) { this.toast.show('Owner not set', 'error'); return; }
     const owner = await this.data.getOwnerById(this.ownerId).toPromise();
-    this.verified = !!owner?.verified;
-    if (!this.verified) { this.toast.show('Complete subscription payment to post rides', 'warning'); return; }
+    this.verified = !!owner?.verified && this.subscriptionApproved;
+    if (!this.verified) { this.toast.show('Complete subscription payment and wait for admin approval to post rides', 'warning'); return; }
     if (!this.from || !this.to) { this.toast.show('Enter from and to', 'warning'); return; }
     if (!this.isValidDate(this.date)) { this.toast.show('Enter a valid date (YYYY-MM-DD) that is today or later', 'warning'); return; }
     this.data.createRide({ from: this.from, to: this.to, date: this.date, startTime: this.startTime,

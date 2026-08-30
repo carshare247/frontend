@@ -169,6 +169,10 @@ export class MockDataService {
     return this.http.get<ApiResponse<any[]>>(`${this.apiUrl}/subscriptions/plans`).pipe(map((response) => response.data || []));
   }
 
+  createSubscription(planId: string, paymentMethod: string, utrNumber: string): Observable<any> {
+    return this.http.post<ApiResponse<any>>(`${this.apiUrl}/subscriptions`, { planId, paymentMethod, utrNumber }).pipe(map((response) => response.data));
+  }
+
   submitUtr(subscriptionId: string, utrNumber: string): Observable<any> {
     return this.http.post<ApiResponse<any>>(`${this.apiUrl}/subscriptions/${subscriptionId}/utr`, null, { params: { utrNumber } }).pipe(map((response) => response.data));
   }
@@ -201,6 +205,14 @@ export class MockDataService {
 
   getAdminDiditVerifications(): Observable<any[]> {
     return this.http.get<ApiResponse<any[]>>(`${this.apiUrl}/v1/admin/verifications`).pipe(map(response => response.data || []));
+  }
+
+  approveDiditReview(id: string, comment = 'Approved by admin review.'): Observable<any> {
+    return this.http.post<ApiResponse<any>>(`${this.apiUrl}/v1/admin/didit/${id}/approve`, { comment }).pipe(map((response) => response.data));
+  }
+
+  rejectDiditReview(id: string, reason = 'Rejected by admin review.'): Observable<any> {
+    return this.http.post<ApiResponse<any>>(`${this.apiUrl}/v1/admin/didit/${id}/reject`, { reason }).pipe(map((response) => response.data));
   }
 
   approveSubscription(id: string): Observable<any> {

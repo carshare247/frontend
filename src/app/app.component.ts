@@ -8,6 +8,8 @@ import { MessageService } from './message.service';
 import { NotificationService } from './notification.service';
 import { MockDataService } from './mock-data.service';
 import { LoadingService } from './loading.service';
+import { RegistrationApiService } from './services/registration-api.service';
+import { RegistrationStage, RegistrationStateService } from './services/registration-state.service';
 import { Capacitor } from '@capacitor/core';
 import { filter } from 'rxjs';
 import QRCode from 'qrcode';
@@ -30,7 +32,8 @@ export class AppComponent {
   private ownerSubscriptionLoaded = false;
   private ownerSubscriptionActive = false;
   private ownerSubscriptionInReview = false;
-  constructor(private auth: AuthService, private router: Router, private data: MockDataService, private messageService: MessageService, private notificationService: NotificationService, public loading: LoadingService) {
+  private ownerSubscriptionRejected = false;
+  constructor(private auth: AuthService, private router: Router, private data: MockDataService, private messageService: MessageService, private notificationService: NotificationService, public loading: LoadingService, private registrationApi: RegistrationApiService, private registrationState: RegistrationStateService) {
     setTimeout(() => this.showLaunchScreen = false, 2200);
     window.addEventListener('carshare-auth-changed', () => {
       if (this.auth.current) {
@@ -201,18 +204,41 @@ export class AppComponent {
     }
   }
 
-  private refreshOwnerSubscription() {
+  refreshOwnerSubscription() {
     const session = this.auth.current;
     if (!session || session.role !== 'owner') return;
     this.data.getMySubscriptions().subscribe({
       next: subscriptions => {
-        this.ownerSubscriptionLoaded = true;
         const status = subscriptions[0]?.status;
-        this.ownerSubscriptionActive = status === 'PAID';
-        this.ownerSubscriptionInReview = status === 'VERIFICATION_IN_PROGRESS';
+        if (status) {
+          this.setOwnerSubscriptionStatus(status);
+          return;
+        }
+        const localRegistration = this.registrationState.current;
+        if (localRegistration.stage === RegistrationStage.PAYMENT_SUBMITTED) {
+          this.setOwnerSubscriptionStatus('VERIFICATION_IN_PROGRESS');
+          return;
+        }
+        this.registrationApi.resume().subscribe({
+          next: registration => this.setOwnerSubscriptionStatus(this.registrationStatusToSubscriptionStatus(registration)),
+          error: () => { this.ownerSubscriptionLoaded = true; }
+        });
       },
       error: () => { this.ownerSubscriptionLoaded = true; }
     });
+  }
+
+  private setOwnerSubscriptionStatus(status: string | null): void {
+    this.ownerSubscriptionLoaded = true;
+    this.ownerSubscriptionActive = status === 'PAID';
+    this.ownerSubscriptionInReview = status === 'VERIFICATION_IN_PROGRESS';
+    this.ownerSubscriptionRejected = status === 'REJECTED';
+  }
+
+  private registrationStatusToSubscriptionStatus(registration: { stage?: string; subscriptionStatus?: string | null }): string | null {
+    const status = String(registration.subscriptionStatus || '').toUpperCase();
+    if (status === 'PAID' || status === 'VERIFICATION_IN_PROGRESS' || status === 'REJECTED') return status;
+    return registration.stage === 'PAYMENT_SUBMITTED' ? 'VERIFICATION_IN_PROGRESS' : null;
   }
 
   get ownerId(): string {
@@ -232,8 +258,12 @@ export class AppComponent {
     return this.auth.current?.role === 'owner' && this.ownerSubscriptionLoaded && this.ownerSubscriptionInReview;
   }
 
+  get isOwnerPaymentRejected(): boolean {
+    return this.auth.current?.role === 'owner' && this.ownerSubscriptionLoaded && this.ownerSubscriptionRejected;
+  }
+
   payNow() {
-    this.router.navigateByUrl('/owner/register');
+    this.router.navigateByUrl('/owner/payment');
   }
 
   get current() {

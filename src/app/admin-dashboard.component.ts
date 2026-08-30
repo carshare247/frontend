@@ -5,11 +5,14 @@ import { Router } from '@angular/router';
 import { MockDataService, Owner, Ride } from './mock-data.service';
 import { AuthService } from './auth.service';
 import { ToastService } from './toast.service';
+import { DiditReviewDetailComponent } from './components/didit-review-detail.component';
+import { VerificationStatusWidgetComponent } from './components/verification-status-widget.component';
+import { SubscriptionStatusWidgetComponent } from './components/subscription-status-widget.component';
 
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, DiditReviewDetailComponent, VerificationStatusWidgetComponent, SubscriptionStatusWidgetComponent],
   template: `
       <main class="admin-page">
         <header class="admin-head">
@@ -27,10 +30,14 @@ import { ToastService } from './toast.service';
         <section class="stat-grid">
           <div class="stat"><span>Owners</span><strong>{{ owners.length }}</strong><small>Total owners</small></div>
           <div class="stat"><span>Rides</span><strong>{{ rides.length }}</strong><small>Total rides</small></div>
-          <div class="stat"><span>Awaiting review</span><strong>{{ pendingCount }}</strong><small>UTR submissions</small></div>
+          <div class="stat"><span>Awaiting review</span><strong>{{ pendingCount }}</strong><small>UTR & verification checks</small></div>
         </section>
 
-        <!-- Ticket dialog (in-page) -->
+        <div class="review-summary">
+          <app-verification-status-widget [status]="firstVerificationStatus" title="Didit queue" [showRefresh]="true" (refresh)="loadVerifications()"></app-verification-status-widget>
+          <app-subscription-status-widget [subscription]="latestSubscription" title="Latest subscription"></app-subscription-status-widget>
+        </div>
+
         <div *ngIf="selectedTicket" class="modal-backdrop" style="position:fixed;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center;z-index:60;background:rgba(0,0,0,0.45)">
           <div class="card modal-card" style="width:520px;max-width:96%;background:#fff;color:#0f172a;padding:18px">
             <h3 style="margin-top:0">Ticket #{{selectedTicket.id}} <small class="muted-small">{{selectedTicket.status}}</small></h3>
@@ -142,13 +149,28 @@ import { ToastService } from './toast.service';
           </div>
         </section>
 
-        <!-- Tickets -->
+        <!-- Didit Verifications -->
         <section *ngIf="tab==='verifications'" class="review-panel">
-          <div class="toolbar"><div><h2>Didit identity verification</h2><span class="muted-small">{{ verifications.length }} records</span></div><button class="btn btn-secondary" (click)="loadVerifications()">Refresh</button></div>
-          <div class="table-wrap"><table><thead><tr><th>User</th><th>Role</th><th>Status</th><th>Session</th><th>Decision time</th><th>Raw Didit document/response</th></tr></thead><tbody>
-            <tr *ngFor="let v of verifications"><td><strong>{{v.userId}}</strong></td><td>{{v.userRole}}</td><td><span class="status" [class.pending]="v.status==='PENDING_VERIFICATION'" [class.approved]="v.status==='VERIFIED'" [class.rejected]="v.status==='REJECTED'">{{v.status}}</span></td><td><code>{{v.sessionId}}</code></td><td>{{v.createdAt | date:'medium'}}</td><td><pre style="max-width:420px;max-height:120px;overflow:auto;white-space:pre-wrap">{{v.rawPayloadJson}}</pre></td></tr>
-            <tr *ngIf="!verifications.length"><td colspan="6" class="empty">No Didit verification records</td></tr>
-          </tbody></table></div>
+          <div class="toolbar">
+            <div><h2>Didit identity verification</h2><span class="muted-small">{{ verifications.length }} records</span></div>
+            <button class="btn btn-secondary" (click)="loadVerifications()">Refresh</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>User</th><th>Role</th><th>Status</th><th>Session</th><th>Review</th><th>Action</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let v of verifications">
+                  <td><strong>{{v.userId}}</strong><small>{{v.userName || 'Unknown user'}}</small></td>
+                  <td>{{v.userRole}}</td>
+                  <td><span class="status" [class.pending]="v.status==='PENDING_VERIFICATION' || v.status==='UNDER_REVIEW' || v.status==='INITIATED'" [class.approved]="v.status==='VERIFIED' || v.status==='APPROVED'" [class.rejected]="v.status==='REJECTED' || v.status==='DECLINED'">{{ normalizeDiditStatus(v.status) }}</span></td>
+                  <td><code>{{v.sessionId}}</code></td>
+                  <td><small>{{v.createdAt | date:'medium'}}</small></td>
+                  <td class="actions"><button class="btn btn-ghost" (click)="openDiditReview(v)">Review</button><button class="btn" *ngIf="v.status!=='VERIFIED' && v.status!=='APPROVED'" (click)="approveDiditReview(v)">Approve</button><button class="btn btn-danger" *ngIf="v.status!=='REJECTED' && v.status!=='DECLINED'" (click)="rejectDiditReview(v)">Reject</button></td>
+                </tr>
+                <tr *ngIf="!verifications.length"><td colspan="6" class="empty">No Didit verification records</td></tr>
+              </tbody>
+            </table>
+          </div>
         </section>
 
         <!-- Tickets -->
@@ -188,10 +210,19 @@ import { ToastService } from './toast.service';
           <div style="text-align:right"><button class="btn btn-ghost" (click)="selectedOwner=undefined">Close</button></div>
         </section>
 
+        <app-didit-review-detail
+          *ngIf="selectedReview"
+          [review]="selectedReview"
+          (close)="selectedReview = null"
+          (decision)="handleDiditDecision($event)">
+        </app-didit-review-detail>
+
       </main>
     `,
   styles: [`
-    :host{display:block}.admin-page{min-height:calc(100vh - 56px);background:#f1f5f9;padding:34px clamp(16px,4vw,58px);color:#0f172a}.admin-head{display:flex;justify-content:space-between;gap:20px;align-items:end;margin-bottom:28px}.admin-head h1{font-size:clamp(2rem,4vw,3.8rem);letter-spacing:-.04em;margin:0}.eyebrow{color:#0f766e;font-size:.7rem;letter-spacing:.16em;font-weight:900;margin:0 0 10px}.head-actions{display:flex;gap:10px;flex-wrap:wrap}.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px}.stat{background:#fff;border:1px solid #dbe4ea;border-radius:14px;padding:20px}.stat span,.stat small{display:block;color:#64748b}.stat strong{display:block;font-size:2rem;margin:8px 0;color:#0f766e}.review-panel{background:#fff;border:1px solid #dbe4ea;border-radius:14px;overflow:hidden}.toolbar{display:flex;justify-content:space-between;align-items:center;padding:20px;border-bottom:1px solid #e2e8f0}.toolbar h2{margin:0 0 4px}.toolbar select{padding:10px;border:1px solid #cbd5e1;border-radius:8px}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:980px}th,td{text-align:left;padding:15px 18px;border-bottom:1px solid #e2e8f0;vertical-align:top}th{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:#64748b;background:#f8fafc}td strong,td small{display:block}td small{color:#64748b;margin-top:5px}.status{display:inline-block;padding:6px 9px;border-radius:999px;background:#e2e8f0;font-size:.76rem;font-weight:800}.status.pending{background:#fef3c7;color:#92400e}.status.approved{background:#dcfce7;color:#166534}.status.rejected{background:#fee2e2;color:#991b1b}.reject-note{max-width:170px;color:#991b1b!important}.actions{display:flex;gap:6px}.btn-danger{background:#b91c1c;color:#fff;border:0}.empty{text-align:center;padding:42px;color:#64748b}@media(max-width:700px){.admin-head{align-items:start;flex-direction:column}.stat-grid{grid-template-columns:1fr}.toolbar{align-items:start;gap:12px;flex-direction:column}}
+    :host{display:block}.admin-page{min-height:calc(100vh - 56px);background:#f1f5f9;padding:34px clamp(16px,4vw,58px);color:#0f172a}.admin-head{display:flex;justify-content:space-between;gap:20px;align-items:end;margin-bottom:28px}.admin-head h1{font-size:clamp(2rem,4vw,3.8rem);letter-spacing:-.04em;margin:0}.eyebrow{color:#0f766e;font-size:.7rem;letter-spacing:.16em;font-weight:900;margin:0 0 10px}.head-actions{display:flex;gap:10px;flex-wrap:wrap}.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px}.stat{background:#fff;border:1px solid #dbe4ea;border-radius:14px;padding:20px}.stat span,.stat small{display:block;color:#64748b}.stat strong{display:block;font-size:2rem;margin:8px 0;color:#0f766e}
+    .review-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:22px}
+    .review-panel{background:#fff;border:1px solid #dbe4ea;border-radius:14px;overflow:hidden}.toolbar{display:flex;justify-content:space-between;align-items:center;padding:20px;border-bottom:1px solid #e2e8f0}.toolbar h2{margin:0 0 4px}.toolbar select{padding:10px;border:1px solid #cbd5e1;border-radius:8px}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:980px}th,td{text-align:left;padding:15px 18px;border-bottom:1px solid #e2e8f0;vertical-align:top}th{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:#64748b;background:#f8fafc}td strong,td small{display:block}td small{color:#64748b;margin-top:5px}.status{display:inline-block;padding:6px 9px;border-radius:999px;background:#e2e8f0;font-size:.76rem;font-weight:800}.status.pending{background:#fef3c7;color:#92400e}.status.approved{background:#dcfce7;color:#166534}.status.rejected{background:#fee2e2;color:#991b1b}.reject-note{max-width:170px;color:#991b1b!important}.actions{display:flex;gap:6px}.btn-danger{background:#b91c1c;color:#fff;border:0}.empty{text-align:center;padding:42px;color:#64748b}@media(max-width:700px){.admin-head{align-items:start;flex-direction:column}.stat-grid{grid-template-columns:1fr}.toolbar{align-items:start;gap:12px;flex-direction:column}}
   `]
 })
 export class AdminDashboardComponent {
@@ -207,15 +238,20 @@ export class AdminDashboardComponent {
 
   tab: 'subscriptions' | 'users' | 'rides' | 'tickets' | 'verifications' = 'subscriptions';
   verifications: any[] = [];
+  selectedReview: any = null;
   userFilter = '';
   rideStatusFilter = '';
   selectedOwner?: Owner;
+  latestSubscription: any = null;
+  firstVerificationStatus = 'NOT_STARTED';
 
   constructor(private data: MockDataService, private auth: AuthService, private toast: ToastService, private router: Router) {
     if (this.auth.current?.role !== 'admin') { this.router.navigateByUrl('/Kumaresh'); return; }
     this.load();
     this.loadOwners();
     this.loadRides();
+    this.loadVerifications();
+    this.loadLatestSubscription();
   }
   get filtered() { return this.subscriptions; }
   get pendingCount() { return this.allSubscriptions.filter(s => s.status === 'VERIFICATION_IN_PROGRESS').length; }
@@ -258,7 +294,59 @@ export class AdminDashboardComponent {
   }
 
   loadVerifications() {
-    this.data.getAdminDiditVerifications().subscribe({ next: rows => this.verifications = rows || [], error: () => this.toast.show('Unable to load Didit verifications', 'error') });
+    this.data.getAdminDiditVerifications().subscribe({
+      next: rows => {
+        this.verifications = rows || [];
+        const pending = rows?.find((r: any) => ['PENDING_VERIFICATION', 'UNDER_REVIEW', 'INITIATED', 'IN_REVIEW'].includes(String(r.status || '').toUpperCase()));
+        this.firstVerificationStatus = pending ? String(pending.status || 'INITIATED').toUpperCase() : 'APPROVED';
+      },
+      error: () => this.toast.show('Unable to load Didit verifications', 'error')
+    });
+  }
+
+  loadLatestSubscription() {
+    this.data.getMySubscriptions().subscribe({ next: rows => this.latestSubscription = rows?.[0] || null, error: () => this.latestSubscription = null });
+  }
+
+  normalizeDiditStatus(status: string): string {
+    const s = String(status || '').toUpperCase();
+    if (['PENDING_VERIFICATION', 'INITIATED', 'IN_REVIEW', 'UNDER_REVIEW'].includes(s)) return 'In review';
+    if (['VERIFIED', 'APPROVED'].includes(s)) return 'Approved';
+    if (['REJECTED', 'DECLINED'].includes(s)) return 'Rejected';
+    return s || 'Unknown';
+  }
+
+  openDiditReview(review: any) { this.selectedReview = review; }
+
+  handleDiditDecision(event: { action: 'APPROVE' | 'REJECT'; comment: string }) {
+    if (!this.selectedReview) return;
+    if (event.action === 'APPROVE') {
+      this.approveDiditReview(this.selectedReview, event.comment);
+    } else {
+      this.rejectDiditReview(this.selectedReview, event.comment);
+    }
+  }
+
+  approveDiditReview(review: any, comment = 'Approved by admin review.') {
+    this.data.approveDiditReview(review.id || review.sessionId, comment).subscribe({
+      next: () => {
+        this.toast.show('Verification approved', 'success');
+        this.selectedReview = null;
+        this.loadVerifications();
+      },
+      error: () => this.toast.show('Approval failed', 'error')
+    });
+  }
+
+  rejectDiditReview(review: any, comment = 'Rejected by admin review.') {
+    this.data.rejectDiditReview(review.id || review.sessionId, comment).subscribe({
+      next: () => {
+        this.toast.show('Verification rejected', 'success');
+        this.selectedReview = null;
+        this.loadVerifications();
+      },
+      error: () => this.toast.show('Rejection failed', 'error')
+    });
   }
 
   viewTicket(id: string) {

@@ -23,9 +23,10 @@ import { ToastService } from './toast.service';
         <div class="field"><label for="utr">UTR / transaction reference</label><input id="utr" [(ngModel)]="utrNumber" placeholder="e.g. 324567890123" [disabled]="submitted" /></div>
         <div class="payment-actions">
           <button *ngIf="!submitted" class="btn btn-primary btn-lg" (click)="submit()">Confirm payment</button>
+          <button *ngIf="submitted" class="btn btn-secondary btn-lg" (click)="refreshSubscription()" [disabled]="refreshing">{{ refreshing ? 'Refreshing...' : 'Refresh approval status' }}</button>
           <button class="btn btn-ghost" (click)="router.navigateByUrl('/owner/dashboard')">Return to dashboard</button>
         </div>
-        <div *ngIf="submitted" class="verification-note"><strong>Subscription verification in progress</strong><span>Your payment is being reviewed and will be approved in few minutes.</span></div>
+        <div *ngIf="submitted" class="verification-note"><strong>Payment details submitted for admin review</strong><span>Payment details submitted, will be reviewed by the admin for approval. Once approved, you can proceed with posting rides and receive bookings.</span></div>
       </section>
     </div>
   `,
@@ -56,6 +57,7 @@ export class OwnerPaymentComponent {
   subscriptionId = '';
   utrNumber = '';
   submitted = false;
+  refreshing = false;
   amount = 0;
   currency = 'INR';
 
@@ -67,6 +69,9 @@ export class OwnerPaymentComponent {
       const current = subscriptions[0];
       if (!this.subscriptionId && current) this.subscriptionId = current.id;
       if (current?.status === 'VERIFICATION_IN_PROGRESS') { this.submitted = true; this.utrNumber = current.utrNumber || ''; }
+      if (current?.status === 'REJECTED') { this.submitted = false; this.utrNumber = ''; }
+    }, error: () => {
+      this.submitted = false;
     }});
   }
 
@@ -74,11 +79,43 @@ export class OwnerPaymentComponent {
     navigator.clipboard?.writeText(this.upiId).then(() => this.toast.show('UPI ID copied', 'success'));
   }
 
+  refreshSubscription(): void {
+    this.refreshing = true;
+    this.data.getMySubscriptions().subscribe({
+      next: subscriptions => {
+        const current = subscriptions?.find(subscription => subscription.id === this.subscriptionId) || subscriptions?.[0];
+        const status = String(current?.status || '').toUpperCase();
+        this.refreshing = false;
+        if (status === 'PAID') {
+          this.toast.show('Subscription approved. You can now post rides and receive bookings.', 'success');
+          void this.router.navigateByUrl('/owner/dashboard');
+          return;
+        }
+        if (status === 'REJECTED') {
+          this.submitted = false;
+          this.utrNumber = '';
+          this.toast.show('Payment was rejected. Submit a new UTR for review.', 'warning');
+          return;
+        }
+        this.submitted = status === 'VERIFICATION_IN_PROGRESS';
+        this.toast.show('Payment is still waiting for admin approval.', 'info');
+      },
+      error: () => {
+        this.refreshing = false;
+        this.toast.show('Unable to refresh approval status.', 'error');
+      }
+    });
+  }
+
   submit() {
     if (!this.subscriptionId) { this.toast.show('Payment session not found. Start again from owner registration.', 'error'); return; }
     if (!this.utrNumber.trim()) { this.toast.show('Enter the UTR number', 'warning'); return; }
     this.data.submitUtr(this.subscriptionId, this.utrNumber).subscribe({
-      next: () => { this.submitted = true; this.toast.show('Payment submitted for verification', 'success'); },
+      next: () => {
+        this.submitted = true;
+        this.toast.show('Payment submitted for verification', 'success');
+        setTimeout(() => this.router.navigateByUrl('/owner/dashboard'), 800);
+      },
       error: () => this.toast.show('Unable to submit UTR. Please try again.', 'error')
     });
   }

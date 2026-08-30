@@ -11,29 +11,27 @@ export class NotificationService {
 
   async requestPermissionAndSubscribe() {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return { ok: false, message: 'Push not supported' };
-    // Avoid re-registering/re-posting the subscription (and showing the confirmation notification)
-    // on every page navigation — only do the actual subscribe flow once per app session.
+    // Avoid repeated permission prompts while allowing the subscription to be re-saved.
     if (this.subscribeAttempted) return { ok: true, subscription: null };
     this.subscribeAttempted = true;
     try {
       let registration: ServiceWorkerRegistration | null = null;
       registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' });
       const perm = await Notification.requestPermission();
-      if (perm !== 'granted') return { ok: false, message: 'Permission denied' };
-      const existing = await registration.pushManager.getSubscription();
-      const isNewSubscription = !existing;
-      const sub = existing || await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: this.urlBase64ToUint8Array(environment.vapidPublic || '') });
-      // send subscription to backend to save (only needed once; backend also upserts by endpoint)
-      if (isNewSubscription) {
-        try {
-          const token = localStorage.getItem('accessToken');
-          const headers: any = { 'Content-Type': 'application/json' };
-          if (token) headers['Authorization'] = 'Bearer ' + token;
-          // Match backend controller: POST /api/push-subscriptions/push
-          const resp = await fetch(environment.apiBaseUrl.replace(/\/api\/?$/, '') + '/api/push-subscriptions/push', { method: 'POST', headers, body: JSON.stringify(sub) });
-          if (!resp.ok) console.warn('Failed to save subscription to backend, status=', resp.status);
-        } catch (e) { console.warn('Failed to save subscription to backend', e); }
+      if (perm !== 'granted') {
+        this.subscribeAttempted = false;
+        return { ok: false, message: 'Permission denied' };
       }
+      const existing = await registration.pushManager.getSubscription();
+      const sub = existing || await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: this.urlBase64ToUint8Array(environment.vapidPublic || '') });
+      try {
+        const token = localStorage.getItem('accessToken');
+        const headers: any = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+        // The backend upserts by endpoint, so re-save existing subscriptions after login or recovery.
+        const resp = await fetch(environment.apiBaseUrl.replace(/\/api\/?$/, '') + '/api/push-subscriptions/push', { method: 'POST', headers, body: JSON.stringify(sub) });
+        if (!resp.ok) console.warn('Failed to save subscription to backend, status=', resp.status);
+      } catch (e) { console.warn('Failed to save subscription to backend', e); }
       // Return subscription details for debugging UI
       try { return { ok: true, subscription: sub ? JSON.parse(JSON.stringify(sub)) : null }; } catch (e) { return { ok: true, subscription: null }; }
     } catch (e) {

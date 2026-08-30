@@ -5,6 +5,7 @@ import { Observable, map, tap } from 'rxjs';
 import { sanitizeMobile } from './phone.util';
 import { environment } from '../environments/environment';
 import { OtpVerificationService } from './services/otp-verification.service';
+import { RegistrationStateService } from './services/registration-state.service';
 
 export interface UserSession {
   id: string;
@@ -22,7 +23,7 @@ export class AuthService {
   private key = 'demo_current_user';
   private apiUrl = `${environment.apiBaseUrl}/auth`;
 
-  constructor(private router: Router, private http: HttpClient, private otpService: OtpVerificationService) {}
+  constructor(private router: Router, private http: HttpClient, private otpService: OtpVerificationService, private registrationState: RegistrationStateService) {}
 
   get current(): UserSession | null {
     const raw = localStorage.getItem(this.key);
@@ -106,6 +107,7 @@ export class AuthService {
 
   clear() {
     this.otpService.reset();
+    this.registrationState.reset();
     localStorage.removeItem(this.key);
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');

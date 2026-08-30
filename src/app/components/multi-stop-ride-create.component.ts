@@ -7,6 +7,7 @@ import { AuthService } from '../auth.service';
 import { ToastService } from '../toast.service';
 import { MockDataService, LocationItem } from '../mock-data.service';
 import { CreateMultiStopRideRequest, PricingType, RideStop, SegmentPriceRule } from '../models/multi-stop-ride.model';
+import { RegistrationApiService } from '../services/registration-api.service';
 
 /**
  * Component for creating multi-stop rides with segmented pricing.
@@ -600,7 +601,8 @@ export class MultiStopRideCreateComponent implements OnInit {
     private locations: MockDataService,
     private auth: AuthService,
     private router: Router,
-    private toast: ToastService
+    private toast: ToastService,
+    private registrationApi: RegistrationApiService
   ) {}
 
   ngOnInit() {
@@ -800,6 +802,17 @@ export class MultiStopRideCreateComponent implements OnInit {
       next: owner => this.locations.getMySubscriptions().subscribe({
         next: subscriptions => {
           const status = subscriptions[0]?.status;
+          if (!status) {
+            this.registrationApi.resume().subscribe({
+              next: registration => {
+                const registrationStatus = registration.subscriptionStatus || (registration.stage === 'PAYMENT_SUBMITTED' ? 'VERIFICATION_IN_PROGRESS' : null);
+                this.paymentInReview = registrationStatus === 'VERIFICATION_IN_PROGRESS';
+                this.isOwner = !!owner?.verified && registrationStatus === 'PAID';
+              },
+              error: () => this.isOwner = false
+            });
+            return;
+          }
           this.paymentInReview = status === 'VERIFICATION_IN_PROGRESS';
           this.isOwner = !!owner?.verified && status === 'PAID';
         },
@@ -813,7 +826,7 @@ export class MultiStopRideCreateComponent implements OnInit {
    * Navigate to verification page.
    */
   goVerify() {
-    this.router.navigate(['/subscription']);
+    this.router.navigate(['/owner/plans'], { queryParams: { registration: 'true' } });
   }
 
   /**

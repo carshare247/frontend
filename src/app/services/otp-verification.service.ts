@@ -164,6 +164,7 @@ export class OtpVerificationService {
       console.log('OTP sent successfully to:', formattedPhone);
     } catch (error: any) {
       this.setLoading(false);
+      this.resetRecaptcha();
       this.handleFirebaseError(error);
       throw error;
     }
@@ -255,6 +256,10 @@ export class OtpVerificationService {
     this.firebaseUidSubject.next(null);
     this.confirmationResult = null;
     
+    this.resetRecaptcha();
+  }
+
+  private resetRecaptcha(): void {
     if (this.recaptchaVerifier) {
       (this.recaptchaVerifier as any).clear?.();
       this.recaptchaVerifier = null;
@@ -327,6 +332,10 @@ export class OtpVerificationService {
         break;
       case 'auth/operation-not-allowed':
         userMessage = 'Phone authentication is not enabled. Please contact support.';
+        break;
+      case 'auth/internal-error':
+      case 'auth/invalid-app-credential':
+        userMessage = 'Firebase security verification failed. Refresh the page and try again. If it continues, add localhost to Firebase Authorized Domains.';
         break;
       case 'auth/session-expired':
         userMessage = 'Session expired. Please request OTP again.';

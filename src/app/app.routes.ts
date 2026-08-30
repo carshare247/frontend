@@ -1,13 +1,24 @@
 import { Routes } from '@angular/router';
 import { AuthComponent } from './auth.component';
+import { AuthService } from './auth.service';
+import { OnboardingGuard } from './services/onboarding-guard.service';
+import { inject } from '@angular/core';
+import { Router } from '@angular/router';
+
+const ownerAuthGuard = () => {
+	const auth = inject(AuthService);
+	return auth.current ? true : inject(Router).createUrlTree(['/']);
+};
+
 export const routes: Routes = [
 	{ path: '', component: AuthComponent, pathMatch: 'full' },
+	{ path: 'register', loadComponent: () => import('./registration-flow.component').then(m => m.RegistrationFlowComponent) },
 	{ path: 'Kumaresh', loadComponent: () => import('./admin-login.component').then(m => m.AdminLoginComponent) },
 	{ path: 'Kumaresh/dashboard', loadComponent: () => import('./admin-dashboard.component').then(m => m.AdminDashboardComponent) },
-	{ path: 'home', loadComponent: () => import('./components/multi-stop-ride-search.component').then(m => m.MultiStopRideSearchComponent) },
+	{ path: 'home', loadComponent: () => import('./components/multi-stop-ride-search.component').then(m => m.MultiStopRideSearchComponent), canActivate: [OnboardingGuard] },
 	{ path: 'support', loadComponent: () => import('./support.component').then(m => m.SupportComponent) },
 	{ path: 'debug/push', loadComponent: () => import('./debug-push.component').then(m => m.DebugPushComponent) },
-	{ path: 'owner/register', loadComponent: () => import('./owner.component').then(m => m.OwnerComponent) },
+	{ path: 'owner/register', redirectTo: 'register', pathMatch: 'full' },
 	{ path: 'owner/verification-status', loadComponent: () => import('./verification-callback.component').then(m => m.VerificationCallbackComponent) },
 	{ path: 'passenger/verification-status', loadComponent: () => import('./verification-callback.component').then(m => m.VerificationCallbackComponent) },
 	{ path: 'Kumaresh/verifications', loadComponent: () => import('./admin-audit-list.component').then(m => m.AdminAuditListComponent) },

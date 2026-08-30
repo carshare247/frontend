@@ -8,6 +8,7 @@ import { ToastService } from './toast.service';
 import { OtpVerificationService } from './services/otp-verification.service';
 import { MobileVerificationService } from './services/mobile-verification.service';
 import { DiditVerificationService } from './services/didit-verification.service';
+import { OnboardingStateService } from './services/onboarding-state.service';
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 
@@ -187,8 +188,10 @@ export class OwnerComponent {
     private toast: ToastService,
     private otpService: OtpVerificationService,
     private mobileVerificationService: MobileVerificationService,
-    private didit: DiditVerificationService
+    private didit: DiditVerificationService,
+    private onboarding: OnboardingStateService
   ) {
+    this.onboarding.setUserType('OWNER');
     this.startCamera();
     this.prefillFromExisting();
     this.refreshVerificationStatus();
@@ -290,6 +293,8 @@ export class OwnerComponent {
     if (this.profileExists && this.verificationStatus !== 'APPROVED') { this.toast.show('Complete Didit identity verification before payment.', 'warning'); return; }
     if (!this.mobile) { this.toast.show('Enter mobile number', 'warning'); return; }
     if (!this.profileExists && !this.photoData) { this.toast.show('Capture profile photo', 'warning'); return; }
+    this.onboarding.markProfilePhotoCaptured();
+    this.onboarding.markSubscriptionSelected();
 
     const ok = confirm('Continue to payment to complete verification?');
     if (!ok) { this.toast.show('Subscription required to become verified', 'warning'); return; }
@@ -307,8 +312,11 @@ export class OwnerComponent {
     }
 
     const form = new FormData();
+    const mobileNumber = this.mobile.replace(/\D/g, '');
+    if (!mobileNumber) { this.toast.show('Enter a valid mobile number before creating your owner profile.', 'warning'); return; }
     form.append('name', this.name || this.mobile);
-    form.append('mobile', this.mobile);
+    form.append('mobile', mobileNumber);
+    form.append('mobileNumber', mobileNumber);
     form.append('preferences', JSON.stringify(this.selectedPreferences));
     form.append('profilePhoto', this.dataUrlToFile(this.photoData, 'profile-photo.png'));
     this.data.createOwner(form).subscribe({ next: (owner) => {
@@ -316,13 +324,22 @@ export class OwnerComponent {
       if (session && session.ownerId !== owner.id) this.auth.save({ ...session, ownerId: owner.id });
       this.refreshVerificationStatus();
       this.verifyIdentity();
-    }, error: () => this.toast.show('Unable to create owner profile.', 'error') });
+    }, error: (error) => {
+      const message = error?.error?.error?.message || error?.error?.message || `Unable to create owner profile (${error?.status || 'network error'}).`;
+      this.toast.show(message, 'error');
+    } });
   }
 
   verifyIdentity() {
     this.verificationLoading = true;
     this.didit.createSession('OWNER').subscribe({
-      next: ({ sessionId, verificationUrl, status }) => { this.verificationSessionId = sessionId; this.verificationStatus = status; this.verificationLoading = false; void this.didit.openVerification(verificationUrl); },
+      next: ({ sessionId, verificationUrl, status }) => {
+        this.verificationSessionId = sessionId;
+        this.verificationStatus = status;
+        this.onboarding.markDiditStatus(status);
+        this.verificationLoading = false;
+        void this.didit.openVerification(verificationUrl);
+      },
       error: (error) => {
         this.verificationLoading = false;
         const message = error?.error?.error?.message || `Unable to start identity verification (${error?.status || 'network error'}).`;
@@ -334,7 +351,17 @@ export class OwnerComponent {
   refreshVerificationStatus() {
     this.verificationLoading = true;
     this.didit.getStatus().subscribe({
-      next: result => { this.verificationStatus = result.status; this.verificationSessionId = result.sessionId || ''; this.verified = result.status === 'APPROVED'; this.verificationLoading = false; },
+      next: result => {
+        this.verificationStatus = result.status;
+        this.verificationSessionId = result.sessionId || '';
+        this.verified = result.status === 'APPROVED';
+        this.onboarding.markDiditStatus(result.status);
+        const session = this.auth.current;
+        if (session) {
+          this.auth.save({ ...session, verificationStatus: result.status });
+        }
+        this.verificationLoading = false;
+      },
       error: () => { this.verificationLoading = false; this.toast.show('Unable to refresh Didit status.', 'error'); }
     });
   }

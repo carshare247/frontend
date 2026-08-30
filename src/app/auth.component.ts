@@ -12,6 +12,8 @@ import { MessageService } from './message.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import { LogoComponent } from './logo.component';
 import { DiditVerificationService } from './services/didit-verification.service';
+import { OnboardingStateService } from './services/onboarding-state.service';
+import { RegistrationApiService } from './services/registration-api.service';
 
 @Component({
   selector: 'app-auth',
@@ -56,14 +58,24 @@ import { DiditVerificationService } from './services/didit-verification.service'
 
             <ng-container *ngIf="!showForm">
               <div class="actions">
-                <button class="btn btn-primary btn-lg" (click)="openForm('register')">Register</button>
+                <button class="btn btn-primary btn-lg" (click)="router.navigateByUrl('/register')">Register</button>
                 <button class="btn btn-secondary btn-lg" (click)="openForm('login')">Login</button>
               </div>
             </ng-container>
 
-            <div id="recaptcha-container" style="display:none;"></div>
+            <div id="recaptcha-container" aria-hidden="true"></div>
 
             <ng-container *ngIf="showForm">
+              <div class="registration-progress" *ngIf="isRegistering">
+                <div class="progress-bar"><span [style.width.%]="registrationProgress"></span></div>
+                <div class="step-list">
+                  <div class="step-item" *ngFor="let step of registrationSteps; let i = index" [class.active]="currentRegistrationStepIndex === i" [class.done]="currentRegistrationStepIndex > i">
+                    <span class="step-index">{{ i + 1 }}</span>
+                    <span>{{ step }}</span>
+                  </div>
+                </div>
+              </div>
+
               <div class="role-toggle" role="tablist" aria-label="Select role">
                 <button type="button" role="tab" [class.active]="role==='passenger'" (click)="role='passenger'">
                   <span class="rt-ic">🧍</span> Passenger
@@ -74,7 +86,7 @@ import { DiditVerificationService } from './services/didit-verification.service'
               </div>
 
               <div class="field">
-                <label for="mobileInput">Mobile number</label>
+                <label for="mobileInput">Step 1: Mobile number</label>
                 <div class="input-wrap">
                   <span class="input-ic">📱</span>
                   <input id="mobileInput" [(ngModel)]="mobile" placeholder="+91 9xxxxxxxxx" inputmode="tel" autocomplete="tel" [readonly]="mobileVerified" />
@@ -102,33 +114,17 @@ import { DiditVerificationService } from './services/didit-verification.service'
                 </button>
               </div>
 
-              <div class="field" *ngIf="isRegistering && role==='passenger'">
-                <label for="nameInput">Full name</label>
+              <div class="field" *ngIf="isRegistering">
+                <label for="nameInput">Step 2: Full name</label>
                 <div class="input-wrap"><span class="input-ic">👤</span><input id="nameInput" [(ngModel)]="name" placeholder="Your full name" autocomplete="name" /></div>
               </div>
 
-              <section class="field" *ngIf="isRegistering && role==='passenger'">
-                <label>📸 Live profile photo</label>
-                <p class="muted-small">Photo must be captured live from your camera.</p>
-                <div class="video-wrap" style="margin-bottom:8px">
-                  <video #videoEl autoplay playsinline muted style="width:320px;height:240px;background:#000;border-radius:8px"></video>
-                </div>
-                <canvas #canvasEl width="320" height="240" style="display:none"></canvas>
-                <div class="row mt-2">
-                  <button class="btn btn-secondary" (click)="capture()">📷 Capture Photo</button>
-                  <span *ngIf="photoData" class="badge badge-success">✓ Photo captured</span>
-                </div>
-                <div *ngIf="photoData" class="text-center" style="margin-top:8px">
-                  <img [src]="photoData" class="thumb" alt="Profile" style="width:120px;height:90px;object-fit:cover;border-radius:8px" />
-                </div>
-              </section>
-
               <div class="field" *ngIf="isRegistering">
-                <label for="dobInput">Date of birth</label>
+                <label for="dobInput">Step 3: Date of birth</label>
                 <div class="input-wrap"><span class="input-ic">🎂</span><input id="dobInput" type="date" [(ngModel)]="dateOfBirth" [max]="maxDob" /></div>
               </div>
               <div class="field" *ngIf="isRegistering">
-                <label for="genderSelect">Gender</label>
+                <label for="genderSelect">Step 4: Gender</label>
                 <select id="genderSelect" [(ngModel)]="gender">
                   <option value="male">Male</option>
                   <option value="female">Female</option>
@@ -184,6 +180,17 @@ import { DiditVerificationService } from './services/didit-verification.service'
     .ap-head { margin-bottom: 12px; }
     .ap-title { font-size:1.35rem; margin:0 0 4px; }
     .ap-sub { color:#64748b; margin:0; font-size:0.9rem; }
+
+    .registration-progress { margin: 0 0 14px; }
+    .progress-bar { height: 8px; border-radius: 999px; background: #e2e8f0; overflow: hidden; margin-bottom: 10px; }
+    .progress-bar span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#4f46e5,#8b5cf6); }
+    .step-list { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px; }
+    .step-item { display:flex; align-items:center; gap:6px; font-size:0.72rem; color:#64748b; padding:6px 8px; border-radius:10px; background:#f8fafc; border:1px solid transparent; }
+    .step-item.active { background:#eef2ff; border-color:#c7d2fe; color:#3730a3; }
+    .step-item.done { background:#ecfdf5; border-color:#a7f3d0; color:#166534; }
+    .step-index { width:20px; height:20px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:0.7rem; font-weight:800; background:#cbd5e1; color:#0f172a; }
+    .step-item.active .step-index, .step-item.done .step-index { background:#4f46e5; color:#fff; }
+    .step-item.done .step-index { background:#16a34a; }
 
     .role-toggle { display:flex; background:#f1f5f9; border-radius: 12px; padding: 4px; margin: 12px 0 14px; gap:4px; }
     .role-toggle button { flex:1; padding: 10px 12px; border:0; background: transparent; border-radius: 10px; font-weight:700; color:#334155; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; transition: all .15s ease; }
@@ -247,6 +254,7 @@ export class AuthComponent {
   showForm = false;
   showMode: 'login' | 'register' | null = null;
   isRegistering = false;
+  readonly registrationSteps = ['Mobile', 'Profile', 'Verification'];
   maxDob = new Date().toISOString().slice(0, 10);
   photoData: string | null = null;
   governmentIdProof: File | null = null;
@@ -262,16 +270,32 @@ export class AuthComponent {
   @ViewChild('videoEl') videoEl!: ElementRef<HTMLVideoElement>;
   @ViewChild('canvasEl') canvasEl!: ElementRef<HTMLCanvasElement>;
   private stream: MediaStream | null = null;
+  get registrationProgress(): number {
+    if (!this.isRegistering) return 0;
+    const stepIndex = this.currentRegistrationStepIndex;
+    return ((stepIndex + 1) / this.registrationSteps.length) * 100;
+  }
+
+  get currentRegistrationStepIndex(): number {
+    if (!this.isRegistering) return 0;
+    if (!this.mobileVerified) return 0;
+    if (!this.name.trim() && this.role === 'passenger') return 1;
+    if (!this.dateOfBirth) return 1;
+    return 2;
+  }
+
   constructor(
     private auth: AuthService,
-    private router: Router,
+    public router: Router,
     private data: MockDataService,
     private toast: ToastService,
     private otpService: OtpVerificationService,
     private otpLoginService: OtpLoginService,
     private mobileVerificationService: MobileVerificationService,
     private messageService: MessageService,
-    private didit: DiditVerificationService
+    private didit: DiditVerificationService,
+    private onboarding: OnboardingStateService,
+    private registrationApi: RegistrationApiService
   ) {
     const s = this.auth.current;
     if (s) {
@@ -326,12 +350,24 @@ export class AuthComponent {
     if (!this.validateCredentials(true)) return;
     if (!this.mobileVerified) { this.toast.show('Please verify your mobile number before registration.', 'warning'); return; }
     if (!this.firebaseUid) { this.toast.show('Mobile verification failed. Try again.', 'error'); return; }
+    this.onboarding.setUserType('PASSENGER');
+    this.onboarding.markOtpVerified();
+    this.onboarding.markProfileCompleted();
+    this.onboarding.markProfilePhotoCaptured();
+    this.onboarding.markDiditStatus('PENDING');
     
     this.auth.authenticate('register', 'passenger', this.mobile, '', this.dateOfBirth, this.name, this.gender, this.photoData || undefined, this.firebaseUid).subscribe({
       next: (session) => {
         this.mobileVerificationService.verifyMobileOnBackend(session.id, this.firebaseUid!, this.mobile).subscribe({
-          next: () => { this.auth.save({ ...session, mobileVerified: true }); this.initializeSessionServices(); this.router.navigateByUrl('/home'); },
-          error: () => { this.initializeSessionServices(); this.router.navigateByUrl('/home'); }
+          next: () => {
+            this.auth.save({ ...session, mobileVerified: true, verificationStatus: 'NOT_STARTED' });
+            this.initializeSessionServices();
+            this.openStagedRegistration(this.firebaseUid!);
+          },
+          error: () => {
+            this.initializeSessionServices();
+            this.router.navigateByUrl('/home');
+          }
         });
       },
       error: (error) => this.showAuthError(error, 'Unable to register.')
@@ -347,12 +383,23 @@ export class AuthComponent {
     if (!this.validateCredentials(true)) return;
     if (!this.mobileVerified) { this.toast.show('Please verify your mobile number before registration.', 'warning'); return; }
     if (!this.firebaseUid) { this.toast.show('Mobile verification failed. Try again.', 'error'); return; }
+    this.onboarding.setUserType('OWNER');
+    this.onboarding.markOtpVerified();
+    this.onboarding.markProfileCompleted();
+    this.onboarding.markDiditStatus('PENDING');
     
-    this.auth.authenticate('register', 'owner', this.mobile, '', this.dateOfBirth, undefined, this.gender, undefined, this.firebaseUid).subscribe({
+    this.auth.authenticate('register', 'owner', this.mobile, '', this.dateOfBirth, this.name, this.gender, undefined, this.firebaseUid).subscribe({
       next: (session) => {
         this.mobileVerificationService.verifyMobileOnBackend(session.id, this.firebaseUid!, this.mobile).subscribe({
-          next: () => { this.initializeSessionServices(); this.router.navigate(['/owner/register']); },
-          error: () => { this.initializeSessionServices(); this.router.navigate(['/owner/register']); }
+          next: () => {
+            this.auth.save({ ...session, mobileVerified: true, verificationStatus: 'NOT_STARTED' });
+            this.initializeSessionServices();
+            this.openStagedRegistration(this.firebaseUid!);
+          },
+          error: () => {
+            this.initializeSessionServices();
+            this.router.navigate(['/owner/register']);
+          }
         });
       },
       error: (error) => this.showAuthError(error, 'Unable to register owner.')
@@ -362,6 +409,22 @@ export class AuthComponent {
   loginOwner() {
     if (!this.validateCredentials(false)) return;
     this.handleOtpLogin('owner');
+  }
+
+  private openStagedRegistration(firebaseUid: string): void {
+    this.registrationApi.saveBasicDetails({
+      userType: this.role === 'owner' ? 'OWNER' : 'PASSENGER',
+      mobileNumber: this.mobile,
+      fullName: this.name,
+      dateOfBirth: this.dateOfBirth,
+      gender: this.gender.toUpperCase()
+    }).subscribe({
+      next: () => this.registrationApi.markOtpVerified(firebaseUid).subscribe({
+        next: () => this.router.navigateByUrl('/register'),
+        error: () => this.toast.show('Mobile verification could not be linked to registration.', 'error')
+      }),
+      error: () => this.toast.show('Unable to save your registration details.', 'error')
+    });
   }
 
   onGovernmentIdSelected(event: Event): void {
@@ -374,8 +437,6 @@ export class AuthComponent {
     this.showMode = mode;
     this.showForm = true;
     this.isRegistering = mode === 'register';
-    if (this.isRegistering && this.role === 'passenger') this.startCamera();
-
     setTimeout(() => {
       this.otpService.initializeRecaptcha('recaptcha-container');
       this.otpService.verified$.subscribe(verified => {
@@ -486,14 +547,14 @@ export class AuthComponent {
       next: (session) => {
         const otpVerifiedSession = { ...session, mobileVerified: true };
         this.auth.save(otpVerifiedSession);
-        const navigate = async () => {
-          await this.initializeSessionServices();
-          return this.role === 'owner' ? this.router.navigateByUrl('/owner/dashboard') : this.router.navigateByUrl('/home');
-        };
+
+        void this.initializeSessionServices().catch(() => {});
+        void this.router.navigateByUrl(this.role === 'owner' ? '/owner/dashboard' : '/home');
+
         if (this.firebaseUid) {
-          this.mobileVerificationService.verifyMobileOnBackend(session.id, this.firebaseUid, this.mobile).subscribe({ next: navigate, error: navigate });
-        } else {
-          navigate();
+          this.mobileVerificationService.verifyMobileOnBackend(session.id, this.firebaseUid, this.mobile).subscribe({
+            error: (error) => console.error('Backend mobile verification update failed:', error)
+          });
         }
       },
       error: (error) => {
