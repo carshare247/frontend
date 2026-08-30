@@ -50,7 +50,7 @@ import { MockDataService } from './mock-data.service';
           </div>
         </div>
 
-        <div class="section" *ngIf="selectedUserType && (currentStep === 'USER_TYPE_SELECTED' || currentStep === 'BASIC_DETAILS_COMPLETED')">
+        <div class="section" *ngIf="selectedUserType && currentStep === 'USER_TYPE_SELECTED'">
           <h3>Basic information</h3>
           <div class="field">
             <label>Mobile Number</label>
@@ -105,7 +105,7 @@ import { MockDataService } from './mock-data.service';
           </button>
         </div>
 
-        <div class="section" *ngIf="selectedUserType && (currentStep === 'OTP_VERIFIED' || currentStep === 'DOCUMENT_VERIFIED')">
+        <div class="section" *ngIf="selectedUserType && currentStep === 'OTP_VERIFIED'">
           <h3>DIDIT identity verification</h3>
           <div *ngIf="diditStatus === 'NOT_STARTED' || diditStatus === null">
             <p>Verify Identity</p>

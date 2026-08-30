@@ -328,7 +328,7 @@ export class AdminDashboardComponent {
   }
 
   approveDiditReview(review: any, comment = 'Approved by admin review.') {
-    this.data.approveDiditReview(review.id || review.sessionId, comment).subscribe({
+    this.data.approveDiditReview(review.sessionId || review.id, comment).subscribe({
       next: () => {
         this.toast.show('Verification approved', 'success');
         this.selectedReview = null;
@@ -339,7 +339,7 @@ export class AdminDashboardComponent {
   }
 
   rejectDiditReview(review: any, comment = 'Rejected by admin review.') {
-    this.data.rejectDiditReview(review.id || review.sessionId, comment).subscribe({
+    this.data.rejectDiditReview(review.sessionId || review.id, comment).subscribe({
       next: () => {
         this.toast.show('Verification rejected', 'success');
         this.selectedReview = null;
