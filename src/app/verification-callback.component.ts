@@ -82,7 +82,7 @@ export class VerificationCallbackComponent implements OnDestroy {
 
   continueToDashboard() {
     if (this.status !== 'APPROVED') return;
-    this.router.navigateByUrl(this.role === 'OWNER' ? '/owner/dashboard' : '/home');
+    this.router.navigateByUrl(this.role === 'OWNER' ? '/owner/plans?registration=true' : '/home');
   }
 
   ngOnDestroy() { this.poll?.unsubscribe(); }

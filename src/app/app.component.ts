@@ -263,7 +263,7 @@ export class AppComponent {
   }
 
   payNow() {
-    this.router.navigateByUrl('/owner/payment');
+    this.router.navigateByUrl('/owner/plans?registration=true');
   }
 
   get current() {

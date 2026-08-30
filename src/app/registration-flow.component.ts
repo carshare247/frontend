@@ -190,6 +190,31 @@ import { MockDataService } from './mock-data.service';
     .plan-item { border:1px solid #e2e8f0; border-radius:12px; padding:14px; display:flex; justify-content:space-between; cursor:pointer; }
     .plan-item.selected { border-color:#6366f1; background:#eef2ff; }
     .error-text { color:#b91c1c; }
+    @media (max-width: 600px) {
+      .reg-shell { min-height:100dvh; align-items:flex-start; padding:12px 8px 24px; }
+      .reg-card { width:100%; padding:18px 14px 22px; border-radius:16px; }
+      .reg-header { margin-bottom:16px; }
+      h1 { font-size:1.75rem; }
+      .progress-wrap { margin:0 -2px 14px; overflow:hidden; }
+      .progress-bar { height:8px; }
+      .step-list { display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; scrollbar-width:none; }
+      .step-list::-webkit-scrollbar { display:none; }
+      .step-item { flex:0 0 104px; min-height:54px; padding:8px; align-items:flex-start; }
+      .step-item small { line-height:1.25; }
+      .section { margin-top:16px; }
+      .section h3 { font-size:1.05rem; margin-bottom:12px; }
+      .field { gap:6px; margin-bottom:14px; }
+      .field input, .field select { width:100%; min-height:48px; padding:12px; }
+      .otp-mobile-row { flex-direction:column; align-items:stretch; gap:8px; }
+      .otp-mobile-row input, .otp-mobile-row button { width:100%; min-width:0; min-height:48px; }
+      .button-row { flex-direction:column; gap:8px; }
+      .button-row .btn, .section > .btn { width:100%; min-height:48px; }
+      .choice-grid { grid-template-columns:1fr; }
+      .choice-card { min-height:96px; padding:18px; }
+      .meta-box div { align-items:flex-start; flex-direction:column; gap:2px; }
+      video { width:100%; min-height:0; aspect-ratio:4 / 3; object-fit:cover; }
+      .captured-photo { display:block; width:100%; max-width:220px; }
+    }
   `]
 })
 export class RegistrationFlowComponent implements OnInit, OnDestroy {
