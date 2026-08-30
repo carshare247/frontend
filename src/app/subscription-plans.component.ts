@@ -120,13 +120,15 @@ export class SubscriptionPlansComponent {
 
   select(plan: any) {
     if (!plan || !plan.id) { this.toast.show('Invalid plan selected', 'error'); return; }
+    if (!window.location.origin) { this.toast.show('Unable to determine app URL', 'error'); return; }
     this.data.createCheckoutForPlan(plan.id).subscribe({ next: (checkout) => {
       if (checkout && checkout.checkoutUrl) {
         window.location.href = checkout.checkoutUrl;
         return;
       }
       this.router.navigate(['/owner/payment'], { queryParams: { subscriptionId: checkout.subscriptionId, amount: checkout.amount, currency: checkout.currency } });
-    }, error: () => {
+    }, error: (err) => {
+      console.error('Checkout error:', err);
       this.toast.show('Unable to create checkout', 'error');
     } });
   }

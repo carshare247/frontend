@@ -124,6 +124,13 @@ import { MockDataService } from './mock-data.service';
           </div>
           <div *ngIf="diditStatus === 'APPROVED'">
             <p>Verification Approved</p>
+            <div class="meta-box">
+              <div><strong>Verification ID</strong><span>{{ diditSessionId || 'N/A' }}</span></div>
+              <div><strong>Status</strong><span>{{ diditStatus }}</span></div>
+            </div>
+            <div class="button-row">
+              <button class="btn btn-secondary" type="button" (click)="refreshDiditStatus()">Refresh Status</button>
+            </div>
           </div>
           <div *ngIf="diditStatus === 'REJECTED'">
             <p>Verification Rejected</p>
@@ -264,15 +271,19 @@ export class RegistrationFlowComponent implements OnInit, OnDestroy {
 
   private resumeRegistration(): void {
     const session = this.auth.current;
+    const savedState = this.registrationState.current;
+    
     if (!session) {
-      const saved = this.registrationState.current;
-      this.selectedUserType = saved.userType;
-      this.userTypeText = saved.userType ? (saved.userType === 'OWNER' ? 'Owner' : 'Passenger') : 'Registration';
-      this.currentStep = saved.stage;
-      this.mobileNumber = saved.mobileNumber || '';
-      this.fullName = saved.fullName || '';
-      this.dateOfBirth = saved.dateOfBirth || '';
-      this.gender = saved.gender || '';
+      this.selectedUserType = savedState.userType;
+      this.userTypeText = savedState.userType ? (savedState.userType === 'OWNER' ? 'Owner' : 'Passenger') : 'Registration';
+      this.currentStep = savedState.stage;
+      this.mobileNumber = savedState.mobileNumber || '';
+      this.fullName = savedState.fullName || '';
+      this.dateOfBirth = savedState.dateOfBirth || '';
+      this.gender = savedState.gender || '';
+      this.diditStatus = savedState.diditStatus;
+      this.diditSessionId = savedState.diditSessionId;
+      this.diditLastCheckedAt = savedState.diditLastCheckedAt;
       return;
     }
 
@@ -282,17 +293,25 @@ export class RegistrationFlowComponent implements OnInit, OnDestroy {
           this.selectedUserType = response.userType as RegistrationUserType;
           this.userTypeText = this.selectedUserType === 'OWNER' ? 'Owner' : 'Passenger';
         }
-        const savedState = this.registrationState.current;
         this.mobileNumber = response.mobileNumber || session.mobile || savedState.mobileNumber || this.mobileNumber;
         this.fullName = response.fullName || savedState.fullName || this.fullName;
         this.dateOfBirth = response.dateOfBirth || savedState.dateOfBirth || this.dateOfBirth;
         this.gender = response.gender || savedState.gender || this.gender;
-        if (response.stage) {
+        
+        // Prioritize saved DiDit status if it exists (from callback redirect)
+        const hasLocalDiditStatus = savedState.diditStatus && savedState.diditStatus !== 'NOT_STARTED';
+        this.diditStatus = hasLocalDiditStatus ? savedState.diditStatus : (response.diditStatus || this.diditStatus);
+        this.diditSessionId = savedState.diditSessionId || this.diditSessionId;
+        this.diditLastCheckedAt = response.diditLastCheckedAt || savedState.diditLastCheckedAt || null;
+        
+        // Determine stage based on DiDit status if it was just set
+        if (hasLocalDiditStatus) {
+          this.currentStep = (this.diditStatus === 'APPROVED') ? RegistrationStage.DOCUMENT_VERIFIED : RegistrationStage.OTP_VERIFIED;
+        } else if (response.stage) {
           this.currentStep = response.stage;
         }
+        
         if (response.mobileVerified) this.otpSent = true;
-        this.diditStatus = response.diditStatus || this.diditStatus;
-        this.diditLastCheckedAt = response.diditLastCheckedAt || null;
         this.diditRejectReason = response.diditRejectReason || null;
         this.capturedPhotoUrl = response.profilePhotoUrl || null;
         this.selectedPlanId = response.subscriptionPlanId || null;

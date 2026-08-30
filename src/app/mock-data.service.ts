@@ -160,8 +160,15 @@ export class MockDataService {
   }
 
   createCheckoutForPlan(planId: string): Observable<any> {
+    const successUrl = window.location.origin + '/owner/dashboard';
+    const cancelUrl = window.location.origin + '/owner/register';
+    if (!successUrl || !cancelUrl || !planId) {
+      throw new Error('Missing required checkout parameters');
+    }
     return this.http.post<ApiResponse<any>>(`${this.apiUrl}/subscriptions/create-checkout`, {
-      successUrl: window.location.origin + '/owner/dashboard', cancelUrl: window.location.origin + '/owner/register', planId
+      planId,
+      successUrl,
+      cancelUrl
     }).pipe(map((response) => response.data));
   }
 
@@ -175,6 +182,10 @@ export class MockDataService {
 
   submitUtr(subscriptionId: string, utrNumber: string): Observable<any> {
     return this.http.post<ApiResponse<any>>(`${this.apiUrl}/subscriptions/${subscriptionId}/utr`, null, { params: { utrNumber } }).pipe(map((response) => response.data));
+  }
+
+  syncDiditVerificationStatus(): Observable<any> {
+    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/v1/didit/status`).pipe(map((response) => response.data));
   }
 
   // --- Notifications ---

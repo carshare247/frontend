@@ -83,12 +83,22 @@ export class RegistrationStateService {
 
   markDiditStatus(status: string | null, sessionId?: string | null): RegistrationProfileState {
     const normalized = (status || '').toUpperCase();
+    // Ensure stage is at least OTP_VERIFIED when DiDit status is being set
+    let newStage = this.state.stage;
+    if (normalized === 'APPROVED') {
+      newStage = RegistrationStage.DOCUMENT_VERIFIED;
+    } else if (normalized && (normalized === 'INITIATED' || normalized === 'UNDER_REVIEW' || normalized === 'IN_REVIEW' || normalized === 'PENDING')) {
+      // Keep stage at minimum OTP_VERIFIED for pending verifications
+      if (newStage === RegistrationStage.BASIC_DETAILS_COMPLETED || newStage === RegistrationStage.USER_TYPE_SELECTED) {
+        newStage = RegistrationStage.OTP_VERIFIED;
+      }
+    }
     this.state = {
       ...this.state,
       diditStatus: normalized,
       diditSessionId: sessionId ?? this.state.diditSessionId,
       diditLastCheckedAt: new Date().toISOString(),
-      stage: normalized === 'APPROVED' ? RegistrationStage.DOCUMENT_VERIFIED : this.state.stage,
+      stage: newStage,
       updatedAt: new Date().toISOString()
     };
     this.persist();
