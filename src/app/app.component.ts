@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
 import { ToastComponent } from './toast.component';
 import { LogoComponent } from './logo.component';
+import { FooterComponent } from './footer.component';
 import { AuthService } from './auth.service';
 import { MessageService } from './message.service';
 import { NotificationService } from './notification.service';
@@ -17,7 +18,7 @@ import QRCode from 'qrcode';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, ToastComponent, LogoComponent],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, ToastComponent, LogoComponent, FooterComponent],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css']
 })

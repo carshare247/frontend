@@ -150,6 +150,8 @@
     </div>
   </main>
 
+  <app-footer *ngIf="current"></app-footer>
+
   <div class="download-modal-backdrop" *ngIf="downloadAppVisible" (click)="closeDownloadApp()">
     <section class="download-modal" role="dialog" aria-modal="true" aria-labelledby="download-app-title" (click)="$event.stopPropagation()">
       <button type="button" class="download-modal-close" aria-label="Close download dialog" (click)="closeDownloadApp()">×</button>
