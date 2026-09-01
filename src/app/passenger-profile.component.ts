@@ -126,26 +126,20 @@ export class PassengerProfileComponent {
     this.displayInitial = this.displayName.charAt(0).toUpperCase();
     this.displayPhoto = s.profilePhoto || null;
 
-    // If session lacks a name, try fetching /me from backend and save it in session for subsequent views
-    if (!s.name) {
-      this.data.getMe().subscribe({ next: (me) => {
-        if (me && me.name) {
-          const cur = this.auth.current as any;
-          const updated = { ...(cur || {}), name: me.name };
-          try { this.auth.save(updated); } catch {}
-          this.displayName = me.name;
-          this.displayInitial = this.displayName.charAt(0).toUpperCase();
-        }
-        if (me && !this.displayMobile) this.displayMobile = me.mobile || this.displayMobile;
-        if (me && me.profilePhotoUrl && !this.displayPhoto) {
-          const base = this.data['apiUrl'].replace(/\/api\/?$/, '');
-          this.displayPhoto = `${base}/files/${me.profilePhotoUrl}`;
-          const cur = this.auth.current as any;
-          const updated = { ...(cur || {}), profilePhoto: this.displayPhoto };
-          try { this.auth.save(updated); } catch {}
-        }
-      }, error: () => {} });
-    }
+    this.data.getMe().subscribe({ next: (me) => {
+      if (!me) return;
+      if (me.name) {
+        this.displayName = me.name;
+        this.displayInitial = this.displayName.charAt(0).toUpperCase();
+      }
+      this.displayMobile = me.mobile || this.displayMobile;
+      if (me.profilePhotoUrl) {
+        const base = this.data['apiUrl'].replace(/\/api\/?$/, '');
+        this.displayPhoto = /^https?:\/\//i.test(me.profilePhotoUrl) ? me.profilePhotoUrl : `${base}/files/${me.profilePhotoUrl.replace(/^\/?files\//i, '')}`;
+      }
+      const current = this.auth.current as any;
+      if (current) this.auth.save({ ...current, name: me.name || current.name, mobile: me.mobile || current.mobile, profilePhoto: this.displayPhoto || current.profilePhoto, mobileVerified: me.mobileVerified === true || current.mobileVerified === true });
+    }, error: () => {} });
     this.loadStats();
     
     // Load mobile verification status

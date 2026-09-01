@@ -562,6 +562,7 @@ export class RegistrationFlowComponent implements OnInit, OnDestroy {
         this.currentStep = response.stage;
         this.capturedPhotoUrl = response.profilePhotoUrl;
         this.registrationState.markProfilePhotoCompleted(response.profilePhotoUrl);
+        this.updateProfileSession(response.profilePhotoUrl);
         this.toast.show('Profile photo saved.', 'success');
         if (this.selectedUserType === 'PASSENGER') {
           this.currentStep = RegistrationStage.REGISTRATION_COMPLETED;
@@ -582,6 +583,16 @@ export class RegistrationFlowComponent implements OnInit, OnDestroy {
     const buffer = new Uint8Array(bytes.length);
     for (let index = 0; index < bytes.length; index++) buffer[index] = bytes.charCodeAt(index);
     return new File([buffer], fileName, { type: mimeType });
+  }
+
+  private updateProfileSession(profilePhotoUrl: string | null | undefined): void {
+    const session = this.auth.current;
+    if (!session) return;
+    const base = this.data['apiUrl'].replace(/\/api\/?$/, '');
+    const profilePhoto = profilePhotoUrl
+      ? (/^https?:\/\//i.test(profilePhotoUrl) ? profilePhotoUrl : `${base}/files/${profilePhotoUrl.replace(/^\/?files\//i, '')}`)
+      : session.profilePhoto;
+    this.auth.save({ ...session, profilePhoto, mobileVerified: true });
   }
 
   private ensureOwnerProfile(profilePhoto: File): void {
