@@ -57,7 +57,7 @@ import { ToastService } from './toast.service';
               <strong>#{{t.id}} - {{t.categoryLabel || t.category}}</strong>
               <div class="muted-small">{{t.createdAt | date:'short'}} · <span [class]="'status-' + t.status">{{t.status}}</span></div>
               <div style="margin-top:6px">{{t.description}}</div>
-              <div *ngIf="t.resolution" style="margin-top:8px"><strong>Admin response:</strong> {{t.resolution}}</div>
+              <div *ngIf="t.resolution" style="margin-top:8px"><strong>Remarks:</strong> {{t.resolution}}</div>
             </div>
             <div style="text-align:right">
               <button class="btn btn-ghost" (click)="view(t)">View</button>

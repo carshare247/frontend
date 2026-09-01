@@ -5,6 +5,9 @@ import { environment } from '../../environments/environment';
 
 export interface OtpCheckResponse {
   exists: boolean;
+  registeredRole?: 'PASSENGER' | 'OWNER' | 'ADMIN';
+  canLoginAsPassenger?: boolean;
+  canLoginAsOwner?: boolean;
   message?: string;
 }
 

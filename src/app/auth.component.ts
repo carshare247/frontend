@@ -84,6 +84,11 @@ import { RegistrationApiService } from './services/registration-api.service';
                   <span class="rt-ic">🚗</span> Car Owner
                 </button>
               </div>
+              <p *ngIf="showMode === 'login'" class="role-login-hint">
+                {{ role === 'owner'
+                  ? 'Owner login is available only after owner registration.'
+                  : 'Registered owners can also log in as passengers with the same mobile number.' }}
+              </p>
 
               <div class="field">
                 <label for="mobileInput">Step 1: Mobile number</label>
@@ -197,6 +202,7 @@ import { RegistrationApiService } from './services/registration-api.service';
     .role-toggle button:hover { color:#1e293b; }
     .role-toggle button.active { background:#fff; color:#4f46e5; box-shadow: 0 4px 12px rgba(79,70,229,0.15); }
     .rt-ic { font-size:1.05rem; }
+    .role-login-hint { margin:-6px 0 14px; padding:8px 10px; border-radius:10px; background:#f8fafc; border:1px solid #e2e8f0; color:#475569; font-size:0.82rem; line-height:1.35; }
 
     .field { margin-bottom: 12px; }
     .field label { display:block; font-weight:600; color:#334155; margin-bottom:6px; font-size:0.9rem; }
@@ -481,6 +487,10 @@ export class AuthComponent {
         return;
       }
 
+      if (!this.canLoginWithSelectedRole(check.data, role)) {
+        return;
+      }
+
       await this.otpService.sendOtp(this.mobile);
       this.otpSent = true;
       this.toast.show('OTP sent to your mobile number', 'success');
@@ -505,6 +515,9 @@ export class AuthComponent {
       const check = await this.otpLoginService.checkMobile(this.mobile).toPromise();
       if (!check?.data?.exists) {
         this.toast.show('Mobile number is not registered. Please create an account.', 'warning');
+        return;
+      }
+      if (!this.canLoginWithSelectedRole(check.data, this.role)) {
         return;
       }
     }
@@ -605,6 +618,20 @@ export class AuthComponent {
     if (!this.mobile) { this.toast.show('Enter mobile', 'warning'); return false; }
     if (register && this.role === 'passenger' && !this.name.trim()) { this.toast.show('Enter your full name', 'warning'); return false; }
     if (register && !this.dateOfBirth) { this.toast.show('Enter your date of birth', 'warning'); return false; }
+    return true;
+  }
+
+  private canLoginWithSelectedRole(check: { registeredRole?: string; canLoginAsOwner?: boolean }, role: 'passenger' | 'owner'): boolean {
+    if (role !== 'owner') {
+      return true;
+    }
+
+    const isPassengerOnly = check?.canLoginAsOwner === false || (check?.registeredRole || '').toUpperCase() === 'PASSENGER';
+    if (isPassengerOnly) {
+      this.toast.show('This mobile number is registered as passenger. Owner login requires owner registration.', 'warning');
+      return false;
+    }
+
     return true;
   }
 
