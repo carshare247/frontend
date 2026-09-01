@@ -12,6 +12,7 @@ import { LoadingService } from './loading.service';
 import { RegistrationApiService } from './services/registration-api.service';
 import { RegistrationStage, RegistrationStateService } from './services/registration-state.service';
 import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
 import { filter } from 'rxjs';
 import QRCode from 'qrcode';
 
@@ -55,6 +56,7 @@ export class AppComponent {
       this.initializePushNotifications();
       this.initializeWebPushSubscription();
     }
+    this.registerNativeDiditCallback();
     this.loadNotifications();
     // poll for new notifications every 15 seconds for near-real-time updates
     try { setInterval(() => { if (this.auth.current) this.loadNotifications(); }, 15000); } catch (e) { /* ignore */ }
@@ -83,6 +85,21 @@ export class AppComponent {
     this.messageService.initializePushNotifications().then(result => {
       if (!result.ok) {
         console.warn('Push notifications are not ready:', result.message);
+      }
+    });
+  }
+
+  private registerNativeDiditCallback(): void {
+    if (!Capacitor.isNativePlatform()) return;
+
+    App.addListener('appUrlOpen', ({ url }) => {
+      try {
+        const callback = new URL(url);
+        if (callback.protocol !== 'carshare247:' || callback.host !== 'didit') return;
+        if (callback.pathname !== '/owner/verification-status' && callback.pathname !== '/passenger/verification-status') return;
+        void this.router.navigateByUrl(`${callback.pathname}${callback.search}`);
+      } catch {
+        console.warn('Ignoring invalid native app callback URL.');
       }
     });
   }

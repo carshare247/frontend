@@ -4,6 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { VerificationRole, VerificationStatus } from './services/didit-verification.service';
 import { OnboardingStateService } from './services/onboarding-state.service';
 import { RegistrationStateService } from './services/registration-state.service';
+import { RegistrationUserType } from './services/registration-state.service';
 import { MockDataService } from './mock-data.service';
 
 @Component({
@@ -52,6 +53,7 @@ export class VerificationCallbackComponent implements OnInit, OnDestroy {
     const callbackStatus = params.get('status');
     const sessionId = params.get('sessionId');
     if (callbackStatus) this.status = this.mapStatus(callbackStatus);
+    this.registrationState.setCallbackUserType(this.role as RegistrationUserType);
     this.onboarding.markDiditStatus(this.status);
     this.registrationState.markDiditStatus(this.status, sessionId);
   }

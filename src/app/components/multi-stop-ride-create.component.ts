@@ -801,7 +801,8 @@ export class MultiStopRideCreateComponent implements OnInit {
     this.locations.getOwnerById(session.ownerId).subscribe({
       next: owner => this.locations.getMySubscriptions().subscribe({
         next: subscriptions => {
-          const status = subscriptions[0]?.status;
+          const activeSubscription = subscriptions.find(subscription => subscription?.status === 'PAID') || subscriptions[0];
+          const status = activeSubscription?.status;
           if (!status) {
             this.registrationApi.resume().subscribe({
               next: registration => {

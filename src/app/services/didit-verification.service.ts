@@ -15,7 +15,9 @@ export class DiditVerificationService {
   constructor(private http: HttpClient) {}
 
   createSession(role: VerificationRole): Observable<{ sessionId: string; verificationUrl: string; status: string }> {
-    return this.http.post<any>(`${this.apiUrl}/session`, null, { params: { role } }).pipe(map(response => ({ ...response.data, status: normalizeVerificationStatus(response.data?.status) })));
+    return this.http.post<any>(`${this.apiUrl}/session`, null, {
+      params: { role, nativeApp: Capacitor.isNativePlatform() }
+    }).pipe(map(response => ({ ...response.data, status: normalizeVerificationStatus(response.data?.status) })));
   }
 
   async openVerification(verificationUrl: string): Promise<void> {

@@ -56,6 +56,16 @@ export class RegistrationStateService {
     return this.current;
   }
 
+  setCallbackUserType(userType: RegistrationUserType): RegistrationProfileState {
+    this.state = {
+      ...this.state,
+      userType,
+      updatedAt: new Date().toISOString()
+    };
+    this.persist();
+    return this.current;
+  }
+
   markBasicDetailsCompleted(payload: { mobileNumber: string; fullName: string; dateOfBirth: string; gender: string }): RegistrationProfileState {
     this.state = {
       ...this.state,
