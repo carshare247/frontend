@@ -41,9 +41,9 @@ import { ToastService } from './toast.service';
             <button *ngIf="!b.needsRating && (b.status === 'pending' || b.status === 'accepted') && b.ride?.status !== 'completed' && b.ride?.status !== 'cancelled'" class="btn btn-danger btn-sm" (click)="openCancel(b.id)">Cancel</button>
             <div *ngIf="!b.needsRating && (b.status === 'pending' || b.status === 'accepted') && b.ride?.status !== 'completed' && b.ride?.status !== 'cancelled'">
               <button class="btn btn-primary btn-sm" (click)="b.showShare = !b.showShare">Share live location</button>
-              <div *ngIf="b.showShare" style="margin-top:8px">
+              <div *ngIf="b.showShare" class="share-location-form">
                 <label>WhatsApp number (with country code)</label>
-                <div style="display:flex;gap:8px;margin-top:6px">
+                <div class="share-location-controls">
                   <input [(ngModel)]="b.shareNumber" placeholder="e.g. 918765432100" />
                   <button class="btn btn-primary btn-sm" (click)="shareLiveLocationFor(b)">Send</button>
                   <button class="btn btn-secondary btn-sm" (click)="closeShare(b)">Close</button>
@@ -88,7 +88,19 @@ import { ToastService } from './toast.service';
         </div>
       </div>
     </div>
-  `
+  `,
+  styles: [`
+    .share-location-form { width:min(100%, 360px); margin-top:8px; }
+    .share-location-controls { display:grid; grid-template-columns:minmax(0, 1fr) auto auto; gap:8px; margin-top:6px; }
+    @media (max-width:560px) {
+      .ride-right { align-items:flex-start; }
+      .ride-right > div:last-child { width:100%; align-items:stretch !important; }
+      .share-location-form { width:100%; }
+      .share-location-controls { grid-template-columns:1fr 1fr; }
+      .share-location-controls input { grid-column:1 / -1; }
+      .share-location-controls .btn { width:100%; }
+    }
+  `]
 })
 export class BookingsComponent {
   phoneHref = phoneHref;

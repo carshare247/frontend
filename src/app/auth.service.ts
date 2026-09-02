@@ -86,9 +86,9 @@ export class AuthService {
     const base = environment.apiBaseUrl.replace(/\/api\/?$/, '');
     const rawProfilePhoto = String(token.profilePhotoUrl || '').trim();
     const profilePhoto = rawProfilePhoto
-      ? (/^https?:\/\//i.test(rawProfilePhoto)
+      ? (/^(https?:|data:image)\/\//i.test(rawProfilePhoto) || rawProfilePhoto.startsWith('data:image/')
         ? rawProfilePhoto
-        : `${base}/files/${rawProfilePhoto.replace(/^\/?files\//i, '')}`)
+        : `${base}/files/${rawProfilePhoto.replace(/^\/?(files\/)?/i, '')}`)
       : undefined;
     const session: UserSession = { id: token.userId, role: role as any, mobile: sanitizeMobile(token.mobile), ownerId: token.ownerId || undefined, name: token.name || undefined, profilePhoto, mobileVerified: token.mobileVerified === true, verificationStatus: token.verificationStatus || 'NOT_STARTED' };
     if (token.gender) (session as any).gender = token.gender;

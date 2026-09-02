@@ -474,7 +474,7 @@ export class RideDetailComponent implements OnDestroy {
     if (this.tracking) return;
     this.trackingError = null;
     this.tracking = true;
-    this.pollLocation();
+    requestAnimationFrame(() => this.pollLocation());
     this.trackTimer = setInterval(() => this.pollLocation(), 60000);
   }
 
@@ -534,12 +534,19 @@ export class RideDetailComponent implements OnDestroy {
       }
       if (!this.map) {
         const el = document.getElementById('live-map');
-        if (!el) return;
+        if (!el) {
+          requestAnimationFrame(() => this.updateMap());
+          return;
+        }
+        delete (el as any)._leaflet_id;
         this.map = L.map(el).setView([this.trackLat, this.trackLon], 15);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '&copy; OpenStreetMap contributors'
         }).addTo(this.map);
-        this.marker = L.marker([this.trackLat, this.trackLon]).addTo(this.map);
+        this.marker = L.marker([this.trackLat, this.trackLon], { icon: this.trackingMarkerIcon('CAR', '#2563eb') })
+          .addTo(this.map)
+          .bindTooltip('Owner car', { permanent: true, direction: 'top', offset: [0, -22] });
+        requestAnimationFrame(() => this.map?.invalidateSize());
         // if passenger location exists in localStorage, draw it
         this.loadPassengerLocation();
         if (this.passengerMarker) this.passengerMarker.addTo(this.map);
@@ -551,8 +558,10 @@ export class RideDetailComponent implements OnDestroy {
         if (this.passengerMarker) this.passengerMarker.addTo(this.map);
         this.updateRouteLine();
       }
-    } catch (e) {
-      this.trackingError = 'Map init error';
+    } catch (error) {
+      this.map = null;
+      this.marker = null;
+      this.trackingError = 'Unable to initialize the map. Please try again.';
     }
   }
 
@@ -563,13 +572,23 @@ export class RideDetailComponent implements OnDestroy {
       const obj = JSON.parse(raw);
       if (!obj || typeof obj.lat !== 'number' || typeof obj.lon !== 'number') return;
       if (!this.passengerMarker) {
-        this.passengerMarker = L.marker([obj.lat, obj.lon], { icon: L.icon({ iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png', iconSize: [25,41], iconAnchor: [12,41] }) });
+        this.passengerMarker = L.marker([obj.lat, obj.lon], { icon: this.trackingMarkerIcon('YOU', '#16a34a') })
+          .bindTooltip('Your location', { permanent: true, direction: 'top', offset: [0, -22] });
       } else {
         this.passengerMarker.setLatLng([obj.lat, obj.lon]);
       }
     } catch {
       // ignore
     }
+  }
+
+  private trackingMarkerIcon(label: string, color: string) {
+    return L.divIcon({
+      className: 'tracking-marker',
+      html: `<span style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:3px solid #fff;border-radius:50%;background:${color};color:#fff;font:700 10px Arial,sans-serif;box-shadow:0 2px 7px rgba(15,23,42,.35)">${label}</span>`,
+      iconSize: [36, 36],
+      iconAnchor: [18, 18]
+    });
   }
 
   private updateRouteLine() {

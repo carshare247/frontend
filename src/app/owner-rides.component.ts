@@ -173,14 +173,18 @@ export class OwnerRidesComponent implements OnDestroy {
     if (!this.trackingMap) {
       this.trackingMap = L.map(element).setView([this.ownerLat, this.ownerLon], 13);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(this.trackingMap);
-      this.ownerMarker = L.marker([this.ownerLat, this.ownerLon]).addTo(this.trackingMap).bindTooltip('Your car');
-      this.passengerMarker = L.marker([this.passengerLat, this.passengerLon]).addTo(this.trackingMap).bindTooltip('Passenger');
+      this.ownerMarker = L.marker([this.ownerLat, this.ownerLon], { icon: this.trackingMarkerIcon('CAR', '#2563eb') }).addTo(this.trackingMap).bindTooltip('Your car', { permanent:true, direction:'top', offset:[0, -22] });
+      this.passengerMarker = L.marker([this.passengerLat, this.passengerLon], { icon: this.trackingMarkerIcon('PASS', '#16a34a') }).addTo(this.trackingMap).bindTooltip('Passenger', { permanent:true, direction:'top', offset:[0, -22] });
       setTimeout(() => this.trackingMap?.invalidateSize(), 150);
     } else {
       this.ownerMarker.setLatLng([this.ownerLat, this.ownerLon]);
       this.passengerMarker.setLatLng([this.passengerLat, this.passengerLon]);
     }
     this.loadRoadRoute();
+  }
+
+  private trackingMarkerIcon(label: string, color: string) {
+    return L.divIcon({ className:'tracking-marker', html:`<span style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:3px solid #fff;border-radius:50%;background:${color};color:#fff;font:700 10px Arial,sans-serif;box-shadow:0 2px 7px rgba(15,23,42,.35)">${label}</span>`, iconSize:[36,36], iconAnchor:[18,18] });
   }
 
   private loadRoadRoute() {

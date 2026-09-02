@@ -53,7 +53,7 @@ import { ToastService } from './toast.service';
             </ul>
           </div>
         </div>
-        <div class="field"><label>Date</label><input type="date" [min]="today" [(ngModel)]="date" /></div>
+        <div class="field"><label>Travel date</label><input type="date" [min]="today" [(ngModel)]="date" /></div>
         <div class="field"><label>Start Time</label><input placeholder="HH:MM" [(ngModel)]="startTime" /></div>
         <div class="field"><label>End Time</label><input placeholder="HH:MM" [(ngModel)]="endTime" /></div>
         <div class="field"><label>Seats</label><input type="number" min="1" [(ngModel)]="seats" /></div>
@@ -67,14 +67,16 @@ import { ToastService } from './toast.service';
     </section>
   `,
   styles: [`
-    .create-ride-card { padding:clamp(20px,4vw,36px); }
+    .create-ride-card { padding:clamp(20px,4vw,36px); border-color:#e2e8f0; }
     .form-heading { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; margin-bottom:24px; }
     .form-heading h2 { margin:5px 0 4px; color:#102a43; }
     .eyebrow { color:#0f766e; font-size:11px; font-weight:800; letter-spacing:.12em; }
     .form-step { color:#64748b; font-size:12px; font-weight:800; white-space:nowrap; }
     .ride-form { grid-template-columns:repeat(2, minmax(0, 1fr)); gap:18px; }
     .ride-form .field { min-width:0; }
-    .ride-form input, .ride-form select { min-height:44px; }
+    .ride-form input, .ride-form select { min-height:46px; border-color:#cbd5e1; box-shadow:none; }
+    .ride-form input:invalid, .ride-form select:invalid { box-shadow:none; }
+    .ride-form input:focus, .ride-form select:focus { border-color:#4f46e5; box-shadow:0 0 0 3px rgba(79,70,229,.12); }
     .ride-form .field:has(input[type="checkbox"]) { align-self:center; }
     .form-submit { grid-column:1 / -1; display:flex; justify-content:flex-end; padding-top:8px; border-top:1px solid #e2e8f0; }
     .form-submit .btn { min-width:180px; }

@@ -47,6 +47,7 @@ export class AppComponent {
     });
 
     this.router.events.pipe(filter(event => event instanceof NavigationEnd)).subscribe(() => {
+      requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: 'auto' }));
       this.refreshOwnerSubscription();
       if (this.auth.current) {
         this.initializePushNotifications();

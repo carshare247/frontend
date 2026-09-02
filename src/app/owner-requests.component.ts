@@ -71,9 +71,10 @@ interface Booking {
     </section>
   `
   , styles: [`
-    .request-actions { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; align-items:stretch; }
+    .ride-right { justify-content:flex-end; }
+    .request-actions { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; align-items:stretch; width:min(100%, 280px); margin-left:auto; }
     .request-actions .btn { width:100%; min-height:40px; white-space:normal; line-height:1.2; }
-    @media (max-width:560px) { .request-actions { grid-template-columns:1fr; } }
+    @media (max-width:560px) { .request-actions { grid-template-columns:1fr; width:100%; } }
     .tracking-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:12px; }
     .tracking-toolbar .tracking-error { color:#b91c1c; flex:1 1 100%; }
     .tracking-map { width:100%; height:360px; margin-top:12px; border:1px solid #dbe4ea; border-radius:12px; overflow:hidden; }
@@ -154,13 +155,17 @@ export class OwnerRequestsComponent implements OnDestroy {
     if (!this.trackingMap) {
       this.trackingMap = L.map(element).setView([this.ownerLat, this.ownerLon], 13);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'&copy; OpenStreetMap contributors' }).addTo(this.trackingMap);
-      this.ownerMarker = L.marker([this.ownerLat, this.ownerLon]).addTo(this.trackingMap).bindTooltip('Your car');
-      this.passengerMarker = L.marker([this.passengerLat, this.passengerLon]).addTo(this.trackingMap).bindTooltip('Passenger');
+      this.ownerMarker = L.marker([this.ownerLat, this.ownerLon], { icon: this.trackingMarkerIcon('CAR', '#2563eb') }).addTo(this.trackingMap).bindTooltip('Your car', { permanent:true, direction:'top', offset:[0, -22] });
+      this.passengerMarker = L.marker([this.passengerLat, this.passengerLon], { icon: this.trackingMarkerIcon('PASS', '#16a34a') }).addTo(this.trackingMap).bindTooltip('Passenger', { permanent:true, direction:'top', offset:[0, -22] });
     } else {
       this.ownerMarker.setLatLng([this.ownerLat, this.ownerLon]);
       this.passengerMarker.setLatLng([this.passengerLat, this.passengerLon]);
     }
     this.trackingMap.fitBounds([[this.ownerLat, this.ownerLon], [this.passengerLat, this.passengerLon]], { padding:[28,28] });
+  }
+
+  private trackingMarkerIcon(label: string, color: string) {
+    return L.divIcon({ className:'tracking-marker', html:`<span style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:3px solid #fff;border-radius:50%;background:${color};color:#fff;font:700 10px Arial,sans-serif;box-shadow:0 2px 7px rgba(15,23,42,.35)">${label}</span>`, iconSize:[36,36], iconAnchor:[18,18] });
   }
 
   stopTracking() {

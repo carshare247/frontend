@@ -367,12 +367,12 @@ export class MockDataService {
     return { ...owner, preferences, profilePhoto };
   }
 
-  private profilePhotoUrl(value: unknown): string | undefined {
+  profilePhotoUrl(value: unknown): string | undefined {
     const raw = String(value || '').trim();
     if (!raw) return undefined;
-    if (/^https?:\/\//i.test(raw)) return raw;
+    if (/^(https?:|data:image)\/\//i.test(raw) || raw.startsWith('data:image/')) return raw;
     const base = this.apiUrl.replace(/\/api\/?$/, '');
-    return `${base}/files/${raw.replace(/^\/?files\//i, '')}`;
+    return `${base}/files/${raw.replace(/^\/?(files\/)?/i, '')}`;
   }
 
   private fromApiBooking(booking: any): Booking {

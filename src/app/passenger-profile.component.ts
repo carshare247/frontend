@@ -22,7 +22,7 @@ import { firstValueFrom } from 'rxjs';
     <section class="card profile-card">
       <div class="profile-top">
         <div *ngIf="displayPhoto; else initials" class="profile-avatar large" style="overflow:hidden;padding:0">
-          <img [src]="displayPhoto" style="width:84px;height:84px;object-fit:cover;border-radius:12px;display:block" />
+          <img [src]="displayPhoto" (error)="displayPhoto = null" alt="Passenger profile" style="width:84px;height:84px;object-fit:cover;border-radius:12px;display:block" />
         </div>
         <ng-template #initials><div class="profile-avatar large">{{ displayInitial }}</div></ng-template>
         <div class="profile-main">
@@ -133,10 +133,7 @@ export class PassengerProfileComponent {
         this.displayInitial = this.displayName.charAt(0).toUpperCase();
       }
       this.displayMobile = me.mobile || this.displayMobile;
-      if (me.profilePhotoUrl) {
-        const base = this.data['apiUrl'].replace(/\/api\/?$/, '');
-        this.displayPhoto = /^https?:\/\//i.test(me.profilePhotoUrl) ? me.profilePhotoUrl : `${base}/files/${me.profilePhotoUrl.replace(/^\/?files\//i, '')}`;
-      }
+      if (me.profilePhotoUrl) this.displayPhoto = this.data.profilePhotoUrl(me.profilePhotoUrl) || null;
       const current = this.auth.current as any;
       if (current) this.auth.save({ ...current, name: me.name || current.name, mobile: me.mobile || current.mobile, profilePhoto: this.displayPhoto || current.profilePhoto, mobileVerified: me.mobileVerified === true || current.mobileVerified === true });
     }, error: () => {} });

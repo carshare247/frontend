@@ -21,7 +21,7 @@ import { DiditVerificationService, VerificationStatus } from './services/didit-v
     <section class="card profile-card">
       <div class="profile-top">
         <div *ngIf="displayPhoto; else ownerInitials" class="profile-avatar large" style="overflow:hidden;padding:0">
-          <img [src]="displayPhoto" alt="Owner profile" style="width:88px;height:88px;object-fit:cover;border-radius:12px;display:block" />
+          <img [src]="displayPhoto" (error)="displayPhoto = null" alt="Owner profile" style="width:88px;height:88px;object-fit:cover;border-radius:12px;display:block" />
         </div>
         <ng-template #ownerInitials><div class="profile-avatar large">{{ displayInitial }}</div></ng-template>
         <div class="profile-main">
