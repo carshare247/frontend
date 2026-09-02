@@ -104,7 +104,7 @@ import { ToastService } from './toast.service';
 })
 export class BookingsComponent {
   phoneHref = phoneHref;
-  bookings: Array<{ id: string; rideId: string; seats: number; status: string; fromLocation?: string; toLocation?: string; price?: number; amount?: number; totalAmount?: number; ride?: Ride | undefined; cancellationReason?: string; cancellationNote?: string; cancelledBy?: string; cancelledAt?: string; needsRating?: boolean; rated?: boolean; rating?: number; showShare?: boolean; shareNumber?: string; shareError?: string; sharing?: boolean; ownerMobile?: string }> = [];
+  bookings: Array<{ id: string; rideId: string; seats: number; status: string; fromLocation?: string; toLocation?: string; price?: number; amount?: number; totalAmount?: number; ride?: Ride | undefined; cancellationReason?: string; cancellationNote?: string; cancelledBy?: string; cancelledAt?: string; createdAt?: string; needsRating?: boolean; rated?: boolean; rating?: number; showShare?: boolean; shareNumber?: string; shareError?: string; sharing?: boolean; ownerMobile?: string }> = [];
   cancelingId: string | null = null;
   ratingId: string | null = null;
   ratingValue: number | null = null;
@@ -127,16 +127,30 @@ export class BookingsComponent {
 
   load() {
     this.bookings = [];
-    this.data.getMyBookings().subscribe((mine) => mine.forEach((b: any) => {
+    this.data.getMyBookings().subscribe((mine) => {
+      const ordered = [...mine].sort((left, right) => {
+        return String(right.createdAt || '').localeCompare(String(left.createdAt || ''));
+      });
+      this.bookings = ordered.map((b: any) => ({
+        id: b.id, rideId: b.rideId, seats: b.seats, status: b.status, fromLocation: b.fromLocation, toLocation: b.toLocation,
+        price: b.price, amount: b.amount, totalAmount: b.totalAmount, cancellationReason: b.cancellationReason,
+        cancellationNote: b.cancellationNote, cancelledBy: b.cancelledBy, cancelledAt: b.cancelledAt, createdAt: b.createdAt,
+        showShare: false, shareNumber: '', shareError: '', sharing: false
+      }));
+      ordered.forEach((b: any, index: number) => {
       this.data.getRideById(b.rideId).subscribe((ride) => {
-        const item: any = { id: b.id, rideId: b.rideId, seats: b.seats, status: b.status, fromLocation: b.fromLocation, toLocation: b.toLocation, price: b.price, amount: b.amount, totalAmount: b.totalAmount, ride, cancellationReason: b.cancellationReason, cancellationNote: b.cancellationNote, cancelledBy: b.cancelledBy, cancelledAt: b.cancelledAt, needsRating: b.needsRating, rated: b.rated, rating: b.rating, showShare: false, shareNumber: '', shareError: '', sharing: false };
+        const item = this.bookings[index];
+        item.ride = ride;
+        item.needsRating = b.needsRating;
+        item.rated = b.rated;
+        item.rating = b.rating;
         // fetch owner mobile for call action when booking is accepted
         if (ride && ride.ownerId) {
           this.data.getOwnerById(ride.ownerId).subscribe({ next: (owner) => { if (owner) item.ownerMobile = owner.mobile; }, error: () => {} });
         }
-        this.bookings.push(item);
       });
-    }));
+      });
+    });
   }
 
   bookingTotal(booking: any): number {
@@ -198,6 +212,7 @@ export class BookingsComponent {
     if (!this.canOpen(booking)) return;
     this.router.navigate(['/ride', booking.rideId], {
       queryParams: {
+        bookingId: booking.id,
         fromLocation: booking.fromLocation || booking.ride?.from,
         toLocation: booking.toLocation || booking.ride?.to,
         bookingTotal: this.bookingTotal(booking),

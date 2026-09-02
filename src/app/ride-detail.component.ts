@@ -332,6 +332,7 @@ export class RideDetailComponent implements OnDestroy {
   constructor(private route: ActivatedRoute, private data: MockDataService, private toast: ToastService, private auth: AuthService, private sanitizer: DomSanitizer, private http: HttpClient) {
     const id = this.route.snapshot.paramMap.get('id') || '';
     const params = this.route.snapshot.queryParamMap;
+    const bookingId = params.get('bookingId') || '';
     this.displayFrom = params.get('fromLocation') || '';
     this.displayTo = params.get('toLocation') || '';
     const bookingTotal = Number(params.get('bookingTotal'));
@@ -352,7 +353,7 @@ export class RideDetailComponent implements OnDestroy {
         });
       }
     });
-    this.loadBooking(id);
+    this.loadBooking(id, bookingId);
     // reuse passenger count from last search if available
     const sp = localStorage.getItem('search_passengers');
     if (!this.seatsFromSearch && sp) {
@@ -387,8 +388,13 @@ export class RideDetailComponent implements OnDestroy {
     });
   }
 
-  loadBooking(rideId: string) {
+  loadBooking(rideId: string, bookingId = '') {
     this.data.getMyBookings().subscribe((bookings) => {
+      if (bookingId) {
+        this.hasBooking = (bookings.find((booking) => booking.id === bookingId) as Booking) || null;
+        this.updateRatingAvailability();
+        return;
+      }
       const rideBookings = bookings
         .filter((booking) => booking.rideId === rideId)
         .sort((left, right) => {
