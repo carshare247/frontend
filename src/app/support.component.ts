@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { MockDataService } from './mock-data.service';
 import { AuthService } from './auth.service';
 import { ToastService } from './toast.service';
@@ -84,9 +85,18 @@ export class SupportComponent {
   selected: any | undefined;
   form: any = { category: '', description: '', image: undefined };
 
-  constructor(private data: MockDataService, public auth: AuthService, private toast: ToastService, private location: Location) {
+  constructor(private data: MockDataService, public auth: AuthService, private toast: ToastService, private location: Location, private route: ActivatedRoute) {
     this.loadCategories();
     this.loadTickets();
+    this.prefillSafetyReport();
+  }
+
+  private prefillSafetyReport() {
+    if (this.route.snapshot.queryParamMap.get('safety') !== '1') return;
+    const rideId = this.route.snapshot.queryParamMap.get('rideId') || 'the current ride';
+    const owner = this.route.snapshot.queryParamMap.get('owner') || 'the ride owner';
+    this.openForm = true;
+    this.form.description = `Safety concern for ${rideId} involving ${owner}. Please describe what happened, where you are, and whether immediate help is needed.`;
   }
 
   goBack() {
@@ -106,6 +116,10 @@ export class SupportComponent {
         this.categories = all;
       }
       if (this.categories.length) this.form.category = this.categories[0].code;
+      if (this.route.snapshot.queryParamMap.get('safety') === '1') {
+        const safetyCategory = this.categories.find((category: any) => /safety|emergency|incident/i.test(`${category.code} ${category.label}`));
+        if (safetyCategory) this.form.category = safetyCategory.code;
+      }
     }, error: () => this.toast.show('Unable to load categories', 'error') });
   }
 

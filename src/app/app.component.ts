@@ -136,8 +136,9 @@ export class AppComponent {
   }
 
   loadNotifications() {
-    if (!this.auth.current) return;
-    this.data.getNotifications().subscribe({
+    const session = this.auth.current;
+    if (!session) return;
+    this.data.getNotifications(session.role).subscribe({
       next: rows => {
         const list = rows || [];
         const currentIds = new Set<string>();
@@ -189,8 +190,9 @@ export class AppComponent {
   }
 
   markRead(n: any) {
-    if (!n || !n.id) return;
-    this.data.markNotificationRead(n.id).subscribe({
+    const session = this.auth.current;
+    if (!n || !n.id || !session) return;
+    this.data.markNotificationRead(n.id, session.role).subscribe({
       next: () => {
         n.read = true;
         this.seenNotificationIds.add(String(n.id));
@@ -201,7 +203,9 @@ export class AppComponent {
   }
 
   markAllRead() {
-    this.data.markAllNotificationsRead().subscribe({
+    const session = this.auth.current;
+    if (!session) return;
+    this.data.markAllNotificationsRead(session.role).subscribe({
       next: () => {
         this.notifications.forEach(n => {
           n.read = true;

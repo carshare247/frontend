@@ -183,17 +183,18 @@ import { SubscriptionStatusWidgetComponent } from './components/subscription-sta
           </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Ticket</th><th>User</th><th>Category</th><th>Raised</th><th>Status</th><th>Action</th></tr></thead>
+              <thead><tr><th>Ticket</th><th>User</th><th>Category</th><th>Priority</th><th>Raised</th><th>Status</th><th>Action</th></tr></thead>
               <tbody>
                 <tr *ngFor="let t of tickets">
                   <td><strong>#{{t.id}}</strong><small>{{t.title || (t.description | slice:0:40)}}</small></td>
                   <td><small>{{t.userName || t.userMobile}}</small></td>
                   <td><small>{{t.categoryLabel || t.category}}</small></td>
+                  <td><span class="status" [class.rejected]="t.priority === 'URGENT'">{{t.priority || 'NORMAL'}}</span></td>
                   <td><small>{{t.createdAt | date:'short'}}</small></td>
                   <td><span class="status" [class.pending]="t.status==='PENDING'" [class.approved]="t.status==='RESOLVED'">{{t.status}}</span></td>
                   <td class="actions"><button class="btn" (click)="viewTicket(t.id)">Open</button></td>
                 </tr>
-                <tr *ngIf="!tickets.length"><td colspan="6" class="empty">No tickets</td></tr>
+                <tr *ngIf="!tickets.length"><td colspan="7" class="empty">No tickets</td></tr>
               </tbody>
             </table>
           </div>

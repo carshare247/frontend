@@ -38,9 +38,9 @@ import { RegistrationApiService } from './services/registration-api.service';
               <li><span class="hf-ic">💸</span> Affordable, transparent pricing</li>
             </ul>
             <div class="hero-stats">
-              <div><strong>50k+</strong><span>Rides shared</span></div>
-              <div><strong>12k+</strong><span>Verified owners</span></div>
-              <div><strong>4.8★</strong><span>Avg rating</span></div>
+              <div><strong>Verified</strong><span>Owner onboarding</span></div>
+              <div><strong>Flexible</strong><span>Multi-stop journeys</span></div>
+              <div><strong>Direct</strong><span>Booking coordination</span></div>
             </div>
           </div>
           <div class="hero-orb orb-a"></div>
@@ -312,13 +312,24 @@ export class AuthComponent {
   }
 
   async startCamera() {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      this.toast.show('Camera capture is unavailable in this browser. Open CarShare247 in a supported browser and allow camera access.', 'warning');
+      return;
+    }
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({ video: true });
       setTimeout(() => {
         if (this.videoEl && this.videoEl.nativeElement) this.videoEl.nativeElement.srcObject = this.stream;
       }, 100);
-    } catch (e) {
+    } catch (e: any) {
       console.warn('Camera not available', e);
+      const denied = e?.name === 'NotAllowedError' || e?.name === 'SecurityError';
+      this.toast.show(
+        denied
+          ? 'Camera permission was denied. Enable camera access in your browser settings, then retry the live-photo step.'
+          : 'Camera could not be started. Check that no other app is using it, then retry the live-photo step.',
+        'warning'
+      );
     }
   }
 

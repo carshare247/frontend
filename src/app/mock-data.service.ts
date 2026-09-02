@@ -189,16 +189,16 @@ export class MockDataService {
   }
 
   // --- Notifications ---
-  getNotifications(): Observable<any[]> {
-    return this.http.get<ApiResponse<any[]>>(`${this.apiUrl}/notifications`).pipe(map((response) => response.data || []));
+  getNotifications(role: 'passenger' | 'owner' | 'admin'): Observable<any[]> {
+    return this.http.get<ApiResponse<any[]>>(`${this.apiUrl}/notifications`, { params: { role } }).pipe(map((response) => response.data || []));
   }
 
-  markNotificationRead(id: string): Observable<any> {
-    return this.http.patch<ApiResponse<any>>(`${this.apiUrl}/notifications/${id}/read`, {}).pipe(map((response) => response.data));
+  markNotificationRead(id: string, role: 'passenger' | 'owner' | 'admin'): Observable<any> {
+    return this.http.patch<ApiResponse<any>>(`${this.apiUrl}/notifications/${id}/read`, {}, { params: { role } }).pipe(map((response) => response.data));
   }
 
-  markAllNotificationsRead(): Observable<any> {
-    return this.http.patch<ApiResponse<any>>(`${this.apiUrl}/notifications/read-all`, {}).pipe(map((response) => response.data));
+  markAllNotificationsRead(role: 'passenger' | 'owner' | 'admin'): Observable<any> {
+    return this.http.patch<ApiResponse<any>>(`${this.apiUrl}/notifications/read-all`, {}, { params: { role } }).pipe(map((response) => response.data));
   }
 
   getMySubscriptions(): Observable<any[]> {
@@ -338,6 +338,10 @@ export class MockDataService {
 
   resolveTicket(id: string, resolution: string): Observable<any> {
     return this.http.post<ApiResponse<any>>(`${this.apiUrl}/tickets/${id}/resolve`, { resolution }).pipe(map((r: any) => r.data));
+  }
+
+  blockOwner(ownerId: string): Observable<{ blocked: boolean }> {
+    return this.http.post<ApiResponse<{ blocked: boolean }>>(`${this.apiUrl}/safety/blocked-owners/${ownerId}`, {}).pipe(map(response => response.data));
   }
 
   private fromApiRide(ride: any): Ride {

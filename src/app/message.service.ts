@@ -384,6 +384,7 @@ export class MessageService {
           title: message.title || 'carShare',
           body: message.body || 'You have a new notification',
           channelId: 'carshare-default',
+          smallIcon: 'ic_stat_carshare',
           extra: { route: message.route || '/' }
         }]
       });

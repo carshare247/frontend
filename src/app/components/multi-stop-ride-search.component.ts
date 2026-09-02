@@ -33,8 +33,8 @@ import { RideSearchRequest, RideSearchResult } from '../models/multi-stop-ride.m
         </div>
       </div>
 
-      <section *ngIf="!canSearch" class="card">
-        <h3>Complete Identity Verification to Search Rides</h3>
+      <section *ngIf="!verificationState.isApproved" class="card">
+        <h3>Verify identity before booking</h3>
         <p>{{ verificationMessage }}</p>
         <button *ngIf="verificationState.canStart || verificationState.showRetry" class="btn btn-primary" type="button" (click)="startVerification()" [disabled]="verificationLoading">
           {{ verificationState.showRetry ? 'Retry Verification' : 'Verify Identity' }}
@@ -43,7 +43,7 @@ import { RideSearchRequest, RideSearchResult } from '../models/multi-stop-ride.m
       </section>
 
       <!-- Search Form -->
-      <section *ngIf="canSearch" class="card search-card">
+      <section class="card search-card">
         <h3>🔍 Find Multi-Stop Rides</h3>
         
         <form [formGroup]="searchForm" (ngSubmit)="onSearch()" class="search-form">
@@ -94,7 +94,7 @@ import { RideSearchRequest, RideSearchResult } from '../models/multi-stop-ride.m
       </section>
 
       <!-- Search Results -->
-      <div *ngIf="canSearch && searchResults && !isLoading" class="results-section">
+      <div *ngIf="searchResults && !isLoading" class="results-section">
         <div class="results-heading">
           <h3>Available rides ({{ searchResults.items.length }})</h3>
           <button type="button" class="btn btn-secondary btn-sm" (click)="searchResults = null">New search</button>
@@ -187,13 +187,13 @@ import { RideSearchRequest, RideSearchResult } from '../models/multi-stop-ride.m
       </div>
 
       <!-- Loading State -->
-      <div *ngIf="canSearch && isLoading" class="loading">
+      <div *ngIf="isLoading" class="loading">
         <div class="spinner"></div>
         <p>Searching for available rides...</p>
       </div>
 
       <!-- Initial State -->
-      <div *ngIf="canSearch && !searchResults && !isLoading && !errorMessage" class="initial-state">
+      <div *ngIf="!searchResults && !isLoading && !errorMessage" class="initial-state">
         <p>Fill in the search form above and click "Search" to find available rides.</p>
       </div>
     </div>
@@ -827,9 +827,8 @@ export class MultiStopRideSearchComponent implements OnInit {
   ) {}
 
   get verificationState() { return getVerificationUIState(this.verificationStatus); }
-  get canSearch() { return this.verificationState.isApproved; }
   get verificationMessage() {
-    return this.verificationState.showProgress ? 'Identity Verification\nStatus: Under Review' : this.verificationState.showRetry ? 'Identity verification was rejected. Please retry.' : 'Verify your identity to unlock ride search.';
+    return this.verificationState.showProgress ? 'Your identity verification is under review. You can browse rides now and book after approval.' : this.verificationState.showRetry ? 'Identity verification was rejected. Retry it before booking a ride.' : 'You can browse rides now. Complete identity verification before requesting a booking.';
   }
 
   ngOnInit() {
@@ -850,7 +849,7 @@ export class MultiStopRideSearchComponent implements OnInit {
     if (!this.auth.current) return;
     this.verificationLoading = true;
     this.didit.getStatus().subscribe({
-      next: result => { this.verificationStatus = result.status; this.verificationLoading = false; if (!this.canSearch) this.searchResults = null; },
+      next: result => { this.verificationStatus = result.status; this.verificationLoading = false; },
       error: () => { this.verificationLoading = false; }
     });
   }
@@ -905,10 +904,6 @@ export class MultiStopRideSearchComponent implements OnInit {
    * Perform search.
    */
   onSearch() {
-    if (!this.canSearch) {
-      this.toast.show('Complete identity verification before searching rides', 'warning');
-      return;
-    }
     if (!this.searchForm.valid) {
       this.errorMessage = 'Please fill all fields';
       return;
@@ -978,6 +973,10 @@ export class MultiStopRideSearchComponent implements OnInit {
    * Book ride.
    */
   bookRide(ride: RideSearchResult) {
+    if (!this.verificationState.isApproved) {
+      this.toast.show('Complete identity verification before requesting a booking.', 'warning');
+      return;
+    }
     if (!ride.rideId) {
       this.toast.show('Invalid ride selection', 'error');
       return;

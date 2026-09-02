@@ -131,19 +131,26 @@ interface Booking {
           <h4 style="color:#065f46;margin:0 0 8px 0;">🎉 Booking Confirmed!</h4>
           <div>Owner: <strong>{{ owner?.name }}</strong></div>
           <div *ngIf="owner?.mobile">Contact: <strong>📱 {{ owner?.mobile }}</strong></div>
-          <div style="display:flex;gap:8px;margin-top:8px;flex-direction:column;align-items:flex-start">
-            <button *ngIf="ride?.status !== 'completed' && ride?.status !== 'cancelled'" class="btn btn-secondary btn-sm" (click)="openCancel()">Cancel booking</button>
-            <div>
+          <div class="booking-actions">
+            <div class="trip-actions">
               <button *ngIf="ride?.status !== 'completed' && ride?.status !== 'cancelled'" class="btn btn-primary btn-sm" (click)="showShareLocation = !showShareLocation">Share live location</button>
+              <button *ngIf="ride?.status !== 'completed' && ride?.status !== 'cancelled'" class="btn btn-secondary btn-sm" (click)="openCancel()">Cancel booking</button>
             </div>
-            <div *ngIf="showShareLocation" style="margin-top:8px">
+            <section class="safety-actions" aria-label="Safety options">
+              <div class="safety-heading">Safety options</div>
+              <a class="emergency-action" href="tel:112">Emergency: call 112</a>
+              <a class="safety-link" [routerLink]="['/support']" [queryParams]="{ safety: '1', rideId: ride.id, owner: owner?.name }">Report a safety concern</a>
+              <button *ngIf="owner && !ownerBlocked" class="safety-link safety-button" (click)="blockOwner()">Block this owner</button>
+              <span *ngIf="ownerBlocked" class="blocked-note">Owner blocked. Future bookings between you are unavailable.</span>
+            </section>
+            <div *ngIf="showShareLocation" class="share-panel">
               <label>WhatsApp number (with country code)</label>
-              <div style="display:flex;gap:8px;margin-top:6px">
+              <div class="share-form">
                 <input [(ngModel)]="shareNumber" placeholder="e.g. 918765432100" />
                 <button class="btn btn-primary btn-sm" (click)="shareLiveLocation()">Send</button>
                 <button class="btn btn-secondary btn-sm" (click)="cancelShare()">Close</button>
               </div>
-              <div *ngIf="shareError" class="muted-small" style="color:#b91c1c;margin-top:6px">{{ shareError }}</div>
+              <div *ngIf="shareError" class="muted-small share-error">{{ shareError }}</div>
             </div>
           </div>
         </div>
@@ -256,6 +263,21 @@ interface Booking {
 
     .tracking-actions { flex-wrap: wrap; align-items: center; }
     .tracking-actions .muted-small { flex: 1 1 100%; }
+    .booking-actions { display:grid; gap:12px; margin-top:12px; }
+    .trip-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .trip-actions .btn { width:100%; }
+    .safety-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:12px; border:1px solid #fecaca; border-radius:8px; background:#fff7f7; }
+    .safety-heading { grid-column:1 / -1; color:#991b1b; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; }
+    .emergency-action, .safety-link { display:flex; align-items:center; justify-content:center; min-height:40px; padding:8px 10px; border-radius:6px; font-size:13px; font-weight:700; text-align:center; text-decoration:none; }
+    .emergency-action { background:#b91c1c; color:#fff; }
+    .safety-link { border:1px solid #fca5a5; background:#fff; color:#991b1b; }
+    .safety-button { font-family:inherit; cursor:pointer; }
+    .blocked-note { grid-column:1 / -1; color:#991b1b; font-size:12px; }
+    .share-panel { display:grid; gap:6px; padding:12px; border:1px solid #dbe2ea; border-radius:8px; background:#f8fafc; }
+    .share-form { display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:8px; }
+    .share-form .btn { width:auto; min-height:42px; padding:8px 12px; }
+    .share-error { color:#b91c1c; }
+    @media (max-width:420px) { .trip-actions, .safety-actions, .share-form { grid-template-columns:1fr; } .safety-heading, .blocked-note { grid-column:auto; } .share-form .btn { width:100%; } }
   `]
 })
 export class RideDetailComponent implements OnDestroy {
@@ -286,6 +308,7 @@ export class RideDetailComponent implements OnDestroy {
   shareNumber = '';
   shareError = '';
   sharing = false;
+  ownerBlocked = false;
   // tracking state
   tracking = false;
   trackLat: number | null = null;
@@ -348,6 +371,17 @@ export class RideDetailComponent implements OnDestroy {
   }
 
   back() { history.back(); }
+
+  blockOwner() {
+    if (!this.owner || this.ownerBlocked) return;
+    this.data.blockOwner(this.owner.id).subscribe({
+      next: () => {
+        this.ownerBlocked = true;
+        this.toast.show('Owner blocked. Future bookings between you are unavailable.', 'success');
+      },
+      error: () => this.toast.show('Unable to block this owner. Please try again.', 'error')
+    });
+  }
 
   loadBooking(rideId: string) {
     this.data.getMyBookings().subscribe((bookings) => {
