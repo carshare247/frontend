@@ -11,6 +11,7 @@ import { MockDataService } from './mock-data.service';
 import { LoadingService } from './loading.service';
 import { RegistrationApiService } from './services/registration-api.service';
 import { RegistrationStage, RegistrationStateService } from './services/registration-state.service';
+import { LocationTrackingService } from './location-tracking.service';
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
 import { filter } from 'rxjs';
@@ -35,27 +36,27 @@ export class AppComponent {
   private ownerSubscriptionActive = false;
   private ownerSubscriptionInReview = false;
   private ownerSubscriptionRejected = false;
-  constructor(private auth: AuthService, private router: Router, private data: MockDataService, private messageService: MessageService, private notificationService: NotificationService, public loading: LoadingService, private registrationApi: RegistrationApiService, private registrationState: RegistrationStateService) {
+  constructor(private auth: AuthService, private router: Router, private data: MockDataService, private messageService: MessageService, private notificationService: NotificationService, private locationTracking: LocationTrackingService, public loading: LoadingService, private registrationApi: RegistrationApiService, private registrationState: RegistrationStateService) {
     setTimeout(() => this.showLaunchScreen = false, 2200);
     window.addEventListener('carshare-auth-changed', () => {
       if (this.auth.current) {
         this.initializePushNotifications();
-        this.initializeWebPushSubscription();
       }
+      this.locationTracking.start();
     });
 
     this.router.events.pipe(filter(event => event instanceof NavigationEnd)).subscribe(() => {
       this.refreshOwnerSubscription();
       if (this.auth.current) {
         this.initializePushNotifications();
-        this.initializeWebPushSubscription();
       }
+      this.locationTracking.start();
     });
     this.refreshOwnerSubscription();
     if (this.auth.current) {
       this.initializePushNotifications();
-      this.initializeWebPushSubscription();
     }
+    this.locationTracking.start();
     this.registerNativeDiditCallback();
     this.loadNotifications();
     // poll for new notifications every 15 seconds for near-real-time updates
@@ -85,6 +86,9 @@ export class AppComponent {
     this.messageService.initializePushNotifications().then(result => {
       if (!result.ok) {
         console.warn('Push notifications are not ready:', result.message);
+      }
+      if (!Capacitor.isNativePlatform()) {
+        void this.notificationService.requestPermissionAndSubscribe();
       }
     });
   }
@@ -127,12 +131,6 @@ export class AppComponent {
 
   closeDownloadApp() {
     this.downloadAppVisible = false;
-  }
-
-  private initializeWebPushSubscription() {
-    if (!Capacitor.isNativePlatform()) {
-      void this.notificationService.requestPermissionAndSubscribe().then(() => this.messageService.refreshWebPushRegistration());
-    }
   }
 
   loadNotifications() {

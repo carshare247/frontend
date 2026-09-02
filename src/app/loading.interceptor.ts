@@ -9,7 +9,10 @@ export const loadingInterceptor: HttpInterceptorFn = (req, next) => {
   const url = req.url.toLowerCase();
   const skipLoader =
     url.includes('/notifications') ||
+    url.includes('/push/') ||
     url.includes('/locations') ||
+    /\/rides\/[^/]+\/(location|passenger-location)$/.test(url) ||
+    /\/bookings\/[^/]+\/passenger-location$/.test(url) ||
     /\/passengers\/[^/]+\/location$/.test(url) ||
     /\/owners\/[^/]+\/location$/.test(url);
 

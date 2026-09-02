@@ -5,21 +5,27 @@ import { AuthService } from './auth.service';
 
 @Injectable({ providedIn: 'root' })
 export class NotificationService {
-  private subscribeAttempted = false;
+  private subscriptionPromise: Promise<{ ok: boolean; message?: string; subscription?: any }> | null = null;
 
   constructor(private data: MockDataService, private auth: AuthService) {}
 
   async requestPermissionAndSubscribe() {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return { ok: false, message: 'Push not supported' };
-    // Avoid repeated permission prompts while allowing the subscription to be re-saved.
-    if (this.subscribeAttempted) return { ok: true, subscription: null };
-    this.subscribeAttempted = true;
+    if (this.subscriptionPromise) return this.subscriptionPromise;
+    this.subscriptionPromise = this.subscribe();
+    try {
+      return await this.subscriptionPromise;
+    } finally {
+      this.subscriptionPromise = null;
+    }
+  }
+
+  private async subscribe(): Promise<{ ok: boolean; message?: string; subscription?: any }> {
     try {
       let registration: ServiceWorkerRegistration | null = null;
       registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' });
-      const perm = await Notification.requestPermission();
+      const perm = Notification.permission === 'default' ? await Notification.requestPermission() : Notification.permission;
       if (perm !== 'granted') {
-        this.subscribeAttempted = false;
         return { ok: false, message: 'Permission denied' };
       }
       const existing = await registration.pushManager.getSubscription();
@@ -36,7 +42,6 @@ export class NotificationService {
       try { return { ok: true, subscription: sub ? JSON.parse(JSON.stringify(sub)) : null }; } catch (e) { return { ok: true, subscription: null }; }
     } catch (e) {
       console.error('subscribe error', e);
-      this.subscribeAttempted = false;
       return { ok: false, message: String(e) };
     }
   }

@@ -8,15 +8,6 @@ import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { LocalNotifications } from '@capacitor/local-notifications';
 
-function vapidKeyToUint8Array(base64String: string): Uint8Array {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; i++) outputArray[i] = rawData.charCodeAt(i);
-  return outputArray;
-}
-
 export interface PushNotificationMessage {
   title: string;
   body: string;
@@ -41,6 +32,7 @@ export class MessageService {
   private webListenersInitialized = false;
   private nativeInitializationPromise: Promise<{ ok: boolean; message?: string; token?: string }> | null = null;
   private readonly tokenKey = 'fcm_device_token';
+  private readonly tokenUserKey = 'fcm_device_token_user';
   public notificationCount$ = new BehaviorSubject<number>(0);
   public foregroundMessage$ = new BehaviorSubject<PushNotificationMessage | null>(null);
 
@@ -124,7 +116,10 @@ export class MessageService {
 
   private async initializeNativePushNotificationsInternal(): Promise<{ ok: boolean; message?: string; token?: string }> {
     try {
-      const permission = await PushNotifications.requestPermissions();
+      let permission = await PushNotifications.checkPermissions();
+      if (permission.receive === 'prompt') {
+        permission = await PushNotifications.requestPermissions();
+      }
       if (permission.receive !== 'granted') {
         return { ok: false, message: 'Notification permission was denied.' };
       }
@@ -141,14 +136,18 @@ export class MessageService {
 
       await this.registerNativePushListeners();
 
-      const registration = await new Promise<string>((resolve, reject) => {
+      const registration = await new Promise<string>(async (resolve, reject) => {
         let registrationListener: { remove: () => Promise<void> } | null = null;
-        PushNotifications.addListener('registration', token => {
-          registrationListener?.remove();
-          resolve(token.value);
-        }).then(listener => registrationListener = listener);
-        PushNotifications.addListener('registrationError', error => reject(error)).catch(reject);
-        PushNotifications.register().catch(reject);
+        try {
+          registrationListener = await PushNotifications.addListener('registration', token => {
+            void registrationListener?.remove();
+            resolve(token.value);
+          });
+          await PushNotifications.addListener('registrationError', error => reject(error));
+          await PushNotifications.register();
+        } catch (error) {
+          reject(error);
+        }
       });
       const saved = await this.saveToken(registration, 'android');
       this.nativePushInitialized = true;
@@ -224,7 +223,9 @@ export class MessageService {
 
       console.log('FCM token generated successfully:', token.substring(0, 40) + '...');
       const cached = localStorage.getItem(this.tokenKey);
-      if (cached === token) {
+      const tokenUser = localStorage.getItem(this.tokenUserKey);
+      const currentUserId = this.currentUserId();
+      if (cached === token && tokenUser === currentUserId) {
         console.log('FCM token already cached locally; skipping duplicate registration flow.');
         return token;
       }
@@ -257,6 +258,7 @@ export class MessageService {
       console.log('Sending FCM token to backend. tokenLength=', trimmed.length);
       await firstValueFrom(this.http.post(`${environment.apiBaseUrl}/push/register-token`, payload, { headers }));
       localStorage.setItem(this.tokenKey, trimmed);
+      localStorage.setItem(this.tokenUserKey, this.currentUserId());
       console.log('FCM token saved to backend successfully');
       return true;
     } catch (error) {
@@ -282,19 +284,6 @@ export class MessageService {
         return { ok: false, message: 'Unable to register the browser push token.' };
       }
       this.listenForMessages();
-      const registration = await navigator.serviceWorker.ready;
-      const existing = await registration.pushManager.getSubscription();
-      if (!existing) {
-        const subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: vapidKeyToUint8Array(environment.vapidPublic)
-        });
-        await fetch(`${environment.apiBaseUrl.replace(/\/api\/?$/, '')}/api/push-subscriptions/push`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('accessToken') || ''}` },
-          body: JSON.stringify(subscription)
-        });
-      }
       return { ok: true };
     } catch (error) {
       console.error('Web push registration refresh failed', error);
@@ -320,6 +309,7 @@ export class MessageService {
         await deleteToken(this.messaging);
       }
       localStorage.removeItem(this.tokenKey);
+      localStorage.removeItem(this.tokenUserKey);
       return true;
     } catch (error) {
       console.error('Failed to remove FCM token', error);
@@ -474,5 +464,13 @@ export class MessageService {
   private updateNotificationBadge(): void {
     const current = this.notificationCount$.value;
     this.notificationCount$.next(current + 1);
+  }
+
+  private currentUserId(): string {
+    try {
+      return String(JSON.parse(localStorage.getItem('demo_current_user') || '{}')?.id || '');
+    } catch {
+      return '';
+    }
   }
 }

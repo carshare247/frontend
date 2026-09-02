@@ -43,13 +43,13 @@ interface Booking {
           <div *ngIf="b.status==='cancelled'" class="muted-small">Cancelled: {{ b.cancellationReason || '—' }}</div>
         </div>
         <div class="ride-right">
-          <div *ngIf="b.status==='pending'">
+          <div class="request-actions" *ngIf="b.status==='pending'">
             <button class="btn btn-success btn-sm" (click)="respond(b.id,'accepted')">✓ Accept</button>
             <button class="btn btn-danger btn-sm" (click)="respond(b.id,'rejected')">✕ Reject</button>
             <a class="btn btn-ghost btn-sm" [href]="phoneHref(b.userMobile)">📞 Call</a>
           </div>
           <div *ngIf="b.status!=='pending'">
-            <div *ngIf="b.status==='accepted'">
+            <div class="request-actions" *ngIf="b.status==='accepted'">
               <a class="btn btn-ghost btn-sm" [href]="phoneHref(b.userMobile)">📞 Call</a>
               <button class="btn btn-primary btn-sm" (click)="trackBooking(b)" [disabled]="trackingBookingId === b.id">Track passenger</button>
               <div class="muted-small">{{ b.status }}</div>
@@ -71,7 +71,9 @@ interface Booking {
     </section>
   `
   , styles: [`
-    .ride-right > div { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px; }
+    .request-actions { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; align-items:stretch; }
+    .request-actions .btn { width:100%; min-height:40px; white-space:normal; line-height:1.2; }
+    @media (max-width:560px) { .request-actions { grid-template-columns:1fr; } }
     .tracking-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:12px; }
     .tracking-toolbar .tracking-error { color:#b91c1c; flex:1 1 100%; }
     .tracking-map { width:100%; height:360px; margin-top:12px; border:1px solid #dbe4ea; border-radius:12px; overflow:hidden; }
