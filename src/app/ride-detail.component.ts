@@ -498,6 +498,14 @@ export class RideDetailComponent implements OnDestroy {
     this.tracking = false;
     this.trackingError = null;
     if (this.trackTimer) { clearInterval(this.trackTimer); this.trackTimer = null; }
+    if (this.map) { this.map.remove(); this.map = null; }
+    this.marker = null;
+    this.passengerMarker = null;
+    this.routeLine = null;
+    this.trackLat = null;
+    this.trackLon = null;
+    this.lastUpdated = null;
+    this.trackingCar = false;
   }
 
   private pollLocation() {

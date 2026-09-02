@@ -41,6 +41,7 @@ export class AppComponent {
     window.addEventListener('carshare-auth-changed', () => {
       if (this.auth.current) {
         this.initializePushNotifications();
+        this.loadNotifications();
       }
       this.locationTracking.start();
     });
@@ -49,6 +50,7 @@ export class AppComponent {
       this.refreshOwnerSubscription();
       if (this.auth.current) {
         this.initializePushNotifications();
+        this.loadNotifications();
       }
       this.locationTracking.start();
     });

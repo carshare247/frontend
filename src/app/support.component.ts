@@ -34,7 +34,7 @@ import { ToastService } from './toast.service';
             </select>
           </label>
           <label>Description
-            <textarea [(ngModel)]="form.description" rows="4" placeholder="Describe the issue"></textarea>
+            <textarea [(ngModel)]="form.description" rows="4" [placeholder]="descriptionPlaceholder"></textarea>
           </label>
           <label>Image (optional)
             <input type="file" (change)="onFile($event)" accept="image/*" />
@@ -84,6 +84,7 @@ export class SupportComponent {
   openForm = false;
   selected: any | undefined;
   form: any = { category: '', description: '', image: undefined };
+  descriptionPlaceholder = 'Describe the issue';
 
   constructor(private data: MockDataService, public auth: AuthService, private toast: ToastService, private location: Location, private route: ActivatedRoute) {
     this.loadCategories();
@@ -96,7 +97,7 @@ export class SupportComponent {
     const rideId = this.route.snapshot.queryParamMap.get('rideId') || 'the current ride';
     const owner = this.route.snapshot.queryParamMap.get('owner') || 'the ride owner';
     this.openForm = true;
-    this.form.description = `Safety concern for ${rideId} involving ${owner}. Please describe what happened, where you are, and whether immediate help is needed.`;
+    this.descriptionPlaceholder = `Safety concern for ${rideId} involving ${owner}. Describe what happened, where you are, and whether immediate help is needed.`;
   }
 
   goBack() {

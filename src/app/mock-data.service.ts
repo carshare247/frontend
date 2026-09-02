@@ -190,15 +190,15 @@ export class MockDataService {
 
   // --- Notifications ---
   getNotifications(role: 'passenger' | 'owner' | 'admin'): Observable<any[]> {
-    return this.http.get<ApiResponse<any[]>>(`${this.apiUrl}/notifications`, { params: { role } }).pipe(map((response) => response.data || []));
+    return this.http.get<ApiResponse<any[]>>(`${this.apiUrl}/notifications`, { params: { role: role.toUpperCase() } }).pipe(map((response) => response.data || []));
   }
 
   markNotificationRead(id: string, role: 'passenger' | 'owner' | 'admin'): Observable<any> {
-    return this.http.patch<ApiResponse<any>>(`${this.apiUrl}/notifications/${id}/read`, {}, { params: { role } }).pipe(map((response) => response.data));
+    return this.http.patch<ApiResponse<any>>(`${this.apiUrl}/notifications/${id}/read`, {}, { params: { role: role.toUpperCase() } }).pipe(map((response) => response.data));
   }
 
   markAllNotificationsRead(role: 'passenger' | 'owner' | 'admin'): Observable<any> {
-    return this.http.patch<ApiResponse<any>>(`${this.apiUrl}/notifications/read-all`, {}, { params: { role } }).pipe(map((response) => response.data));
+    return this.http.patch<ApiResponse<any>>(`${this.apiUrl}/notifications/read-all`, {}, { params: { role: role.toUpperCase() } }).pipe(map((response) => response.data));
   }
 
   getMySubscriptions(): Observable<any[]> {

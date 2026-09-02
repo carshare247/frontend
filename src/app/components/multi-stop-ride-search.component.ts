@@ -939,8 +939,12 @@ export class MultiStopRideSearchComponent implements OnInit {
     this.rideService.searchRidesPost(request).subscribe({
       next: (results) => {
         this.isLoading = false;
-        this.searchResults = results;
-        if (results.items.length === 0) {
+        const currentUserId = this.auth.current?.id;
+        this.searchResults = {
+          ...results,
+          items: results.items.filter(ride => ride.driverId !== currentUserId)
+        };
+        if (this.searchResults.items.length === 0) {
           this.toast.show('No rides found for your search', 'info');
         }
       },
@@ -961,7 +965,7 @@ export class MultiStopRideSearchComponent implements OnInit {
 
   canBook(ride: RideSearchResult): boolean {
     const requestedSeats = Number(this.searchForm.get('seats')?.value || 0);
-    return Number(ride.availableSeats || 0) >= requestedSeats;
+    return ride.driverId !== this.auth.current?.id && Number(ride.availableSeats || 0) >= requestedSeats;
   }
 
   private localDateKey(): string {
@@ -979,6 +983,10 @@ export class MultiStopRideSearchComponent implements OnInit {
     }
     if (!ride.rideId) {
       this.toast.show('Invalid ride selection', 'error');
+      return;
+    }
+    if (ride.driverId === this.auth.current?.id) {
+      this.toast.show('You cannot book your own ride.', 'warning');
       return;
     }
 
