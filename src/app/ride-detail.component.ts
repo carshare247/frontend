@@ -259,6 +259,9 @@ interface Booking {
       .ride-header, .ride-details, .booking-card { padding: 14px; }
       .detail-row { grid-template-columns: 1fr; gap: 12px; }
       .location { font-size: 16px; }
+      .ride-price, .ride-price .price-pill { width:100%; }
+      .ride-price .price-pill { display:block; padding:10px 14px; text-align:center; }
+      .owner-card { display:grid; grid-template-columns:52px minmax(0, 1fr); gap:12px; align-items:start; }
     }
 
     .tracking-actions { flex-wrap: wrap; align-items: center; }
@@ -345,6 +348,7 @@ export class RideDetailComponent implements OnDestroy {
         this.data.getOwnerById(r.ownerId).subscribe((o) => {
           this.owner = o;
           this.computePreferences();
+          if (o) this.data.getOwnerBlockStatus(o.id).subscribe({ next: status => this.ownerBlocked = status.blocked, error: () => {} });
         });
       }
     });

@@ -344,6 +344,10 @@ export class MockDataService {
     return this.http.post<ApiResponse<{ blocked: boolean }>>(`${this.apiUrl}/safety/blocked-owners/${ownerId}`, {}).pipe(map(response => response.data));
   }
 
+  getOwnerBlockStatus(ownerId: string): Observable<{ blocked: boolean }> {
+    return this.http.get<ApiResponse<{ blocked: boolean }>>(`${this.apiUrl}/safety/blocked-owners/${ownerId}`).pipe(map(response => response.data));
+  }
+
   private fromApiRide(ride: any): Ride {
     return { ...ride, from: ride.from ?? ride.fromLocation, to: ride.to ?? ride.toLocation,
       startTime: String(ride.startTime || '').slice(0, 5), endTime: String(ride.endTime || '').slice(0, 5),

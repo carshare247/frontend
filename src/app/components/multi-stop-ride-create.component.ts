@@ -242,8 +242,13 @@ import { RegistrationApiService } from '../services/registration-api.service';
     .field select {
       padding: 12px;
       border: 1px solid #ddd;
-      border-radius: 4px;
-      font-size: 14px;
+      min-height: 46px;
+      padding: 12px 14px;
+      border-color: #cbd5e1;
+      border-radius: 7px;
+      background: #fff;
+      color: #0f172a;
+      font-size: 16px;
       font-family: inherit;
       width: 100%;
       line-height: 1.5;
@@ -254,10 +259,6 @@ import { RegistrationApiService } from '../services/registration-api.service';
       outline: none;
       border-color: #464feb;
       box-shadow: 0 0 0 3px rgba(70, 79, 235, 0.1);
-    }
-
-    .field input:invalid {
-      border-color: #dc3545;
     }
 
     .location-autocomplete { position: relative; }
