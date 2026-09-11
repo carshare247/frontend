@@ -109,6 +109,12 @@ export class MockDataService {
     );
   }
 
+  getAdminRides(): Observable<Ride[]> {
+    return this.http.get<ApiResponse<any[]>>(`${this.apiUrl}/admin/rides`).pipe(
+      map(response => (response.data || []).map(ride => this.fromApiRide(ride)))
+    );
+  }
+
   private isRideDateAllowed(date: string): boolean {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) return false;
     const today = new Date();
@@ -126,6 +132,10 @@ export class MockDataService {
 
   getOwners(): Observable<Owner[]> {
     return this.http.get<ApiResponse<Owner[]>>(`${this.apiUrl}/owners`).pipe(map((response: any) => this.asItems(response).map((owner) => this.fromApiOwner(owner))));
+  }
+
+  getAdminUsers(): Observable<any[]> {
+    return this.http.get<ApiResponse<any[]>>(`${this.apiUrl}/admin/users`).pipe(map((response: any) => response.data || []));
   }
 
   getRideById(id: string): Observable<Ride | undefined> {

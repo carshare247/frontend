@@ -1,8 +1,10 @@
 import { HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { catchError, switchMap, throwError } from 'rxjs';
+import { catchError, finalize, map, Observable, shareReplay, switchMap, tap, throwError } from 'rxjs';
 import { environment } from '../environments/environment';
+
+let refreshRequest$: Observable<string> | null = null;
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   if (!req.url.startsWith(environment.apiBaseUrl)) return next(req);
@@ -18,21 +20,35 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
       }
 
       const refreshToken = localStorage.getItem('refreshToken');
-      if (!refreshToken) return throwError(() => error);
+      if (!refreshToken) {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('demo_current_user');
+        window.dispatchEvent(new CustomEvent('carshare-auth-changed', { detail: { user: null } }));
+        window.location.assign(window.location.pathname.startsWith('/Kumaresh') ? '/Kumaresh' : '/');
+        return throwError(() => error);
+      }
 
-      return http.post<any>(`${environment.apiBaseUrl}/auth/refresh`, { refreshToken }).pipe(
-        switchMap((response) => {
-          const tokens = response.data;
-          localStorage.setItem('accessToken', tokens.accessToken);
-          if (tokens.refreshToken) localStorage.setItem('refreshToken', tokens.refreshToken);
-          return next(req.clone({ setHeaders: { Authorization: `Bearer ${tokens.accessToken}` } }));
-        }),
+      if (!refreshRequest$) {
+        refreshRequest$ = http.post<any>(`${environment.apiBaseUrl}/auth/refresh`, { refreshToken }).pipe(
+          map(response => response.data),
+          tap(tokens => {
+            localStorage.setItem('accessToken', tokens.accessToken);
+            if (tokens.refreshToken) localStorage.setItem('refreshToken', tokens.refreshToken);
+          }),
+          map(tokens => tokens.accessToken as string),
+          finalize(() => refreshRequest$ = null),
+          shareReplay({ bufferSize: 1, refCount: false })
+        );
+      }
+
+      return refreshRequest$.pipe(
+        switchMap((accessToken) => next(req.clone({ setHeaders: { Authorization: `Bearer ${accessToken}` } }))),
         catchError((refreshError) => {
           localStorage.removeItem('accessToken');
           localStorage.removeItem('refreshToken');
           localStorage.removeItem('demo_current_user');
           window.dispatchEvent(new CustomEvent('carshare-auth-changed', { detail: { user: null } }));
-          if (!window.location.pathname.endsWith('/')) window.location.assign('/');
+          window.location.assign(window.location.pathname.startsWith('/Kumaresh') ? '/Kumaresh' : '/');
           return throwError(() => refreshError);
         })
       );
