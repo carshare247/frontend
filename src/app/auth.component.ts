@@ -1,7 +1,7 @@
 import { Component, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from './auth.service';
 import { MockDataService } from './mock-data.service';
 import { ToastService } from './toast.service';
@@ -135,6 +135,10 @@ import { RegistrationApiService } from './services/registration-api.service';
                   <option value="female">Female</option>
                 </select>
               </div>
+              <div class="field" *ngIf="isRegistering">
+                <label for="referralCode">Referral code (optional)</label>
+                <input id="referralCode" [(ngModel)]="referralCode" maxlength="20" placeholder="CAR247XXXXXX" />
+              </div>
               <p *ngIf="role==='owner'" class="muted-small mt-1">Owners need verification: government proof, live photo, and an active subscription.</p>
 
               <div class="actions">
@@ -256,6 +260,7 @@ export class AuthComponent {
   name = '';
   dateOfBirth = '';
   gender: 'male' | 'female' = 'male';
+  referralCode = '';
   // UI state: whether the inline form is visible and which mode is active
   showForm = false;
   showMode: 'login' | 'register' | null = null;
@@ -293,6 +298,7 @@ export class AuthComponent {
   constructor(
     private auth: AuthService,
     public router: Router,
+    private route: ActivatedRoute,
     private data: MockDataService,
     private toast: ToastService,
     private otpService: OtpVerificationService,
@@ -303,6 +309,7 @@ export class AuthComponent {
     private onboarding: OnboardingStateService,
     private registrationApi: RegistrationApiService
   ) {
+    this.referralCode = (this.route.snapshot.queryParamMap.get('ref') || '').trim().toUpperCase();
     const s = this.auth.current;
     if (s) {
       if (s.role === 'admin') this.router.navigateByUrl('/Kumaresh/dashboard');
@@ -373,7 +380,7 @@ export class AuthComponent {
     this.onboarding.markProfilePhotoCaptured();
     this.onboarding.markDiditStatus('PENDING');
     
-    this.auth.authenticate('register', 'passenger', this.mobile, '', this.dateOfBirth, this.name, this.gender, this.photoData || undefined, this.firebaseUid).subscribe({
+    this.auth.authenticate('register', 'passenger', this.mobile, '', this.dateOfBirth, this.name, this.gender, this.photoData || undefined, this.firebaseUid, undefined, this.referralCode || undefined, this.deviceFingerprint()).subscribe({
       next: (session) => {
         this.mobileVerificationService.verifyMobileOnBackend(session.id, this.firebaseUid!, this.mobile).subscribe({
           next: () => {
@@ -405,7 +412,7 @@ export class AuthComponent {
     this.onboarding.markProfileCompleted();
     this.onboarding.markDiditStatus('PENDING');
     
-    this.auth.authenticate('register', 'owner', this.mobile, '', this.dateOfBirth, this.name, this.gender, undefined, this.firebaseUid).subscribe({
+    this.auth.authenticate('register', 'owner', this.mobile, '', this.dateOfBirth, this.name, this.gender, undefined, this.firebaseUid, undefined, this.referralCode || undefined, this.deviceFingerprint()).subscribe({
       next: (session) => {
         this.mobileVerificationService.verifyMobileOnBackend(session.id, this.firebaseUid!, this.mobile).subscribe({
           next: () => {
@@ -426,6 +433,16 @@ export class AuthComponent {
   loginOwner() {
     if (!this.validateCredentials(false)) return;
     this.handleOtpLogin('owner');
+  }
+
+  private deviceFingerprint(): string {
+    const key = 'carshare_device_id';
+    let value = localStorage.getItem(key);
+    if (!value) {
+      value = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      localStorage.setItem(key, value);
+    }
+    return value;
   }
 
   private openStagedRegistration(firebaseUid: string): void {

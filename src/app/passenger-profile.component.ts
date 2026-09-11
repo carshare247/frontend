@@ -58,6 +58,8 @@ import { firstValueFrom } from 'rxjs';
         <span *ngIf="diditStatus === 'APPROVED'" class="badge badge-success">✅ Documents Verified</span>
       </div>
 
+      <div class="rewards-link"><div><strong>Referral & Rewards</strong><span>Share your code, view coins, and request redemption.</span></div><a routerLink="/referrals" class="btn btn-primary">Open rewards</a></div>
+
       <hr />
 
       <h3>Recent bookings</h3>
@@ -84,6 +86,7 @@ import { firstValueFrom } from 'rxjs';
     .stat { background:#f8fafc; padding:12px; border-radius:8px; flex:1 1 120px; text-align:center }
     .stat-value { font-weight:700; font-size:1.2rem }
     .booking-row { display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #eef2ff }
+    .rewards-link { display:flex;justify-content:space-between;align-items:center;gap:14px;margin-top:16px;padding:14px;border:1px solid #b9e2d8;background:#f0fbf8;border-radius:8px }.rewards-link div{display:grid;gap:3px}.rewards-link span{color:#526577;font-size:.85rem}
     @media (max-width:600px) {
       .profile-top { flex-direction:column; align-items:flex-start }
       .profile-actions { width:100% }

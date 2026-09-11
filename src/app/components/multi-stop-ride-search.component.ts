@@ -939,10 +939,13 @@ export class MultiStopRideSearchComponent implements OnInit {
     this.rideService.searchRidesPost(request).subscribe({
       next: (results) => {
         this.isLoading = false;
-        const currentUserId = this.auth.current?.id;
+        const currentUser = this.auth.current;
         this.searchResults = {
           ...results,
-          items: results.items.filter(ride => ride.driverId !== currentUserId)
+          items: results.items.filter(ride =>
+            ride.driverId !== currentUser?.id
+            && (!ride.femaleOnly || currentUser?.gender?.toLowerCase() === 'female')
+          )
         };
         if (this.searchResults.items.length === 0) {
           this.toast.show('No rides found for your search', 'info');

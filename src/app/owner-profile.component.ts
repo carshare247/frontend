@@ -63,6 +63,8 @@ import { DiditVerificationService, VerificationStatus } from './services/didit-v
         <!--<span *ngIf="!mobileVerified" class="muted-small badge badge-warning">⚠️ Please verify mobile to enable payments</span>-->
       </div>
 
+      <div class="rewards-link"><div><strong>Referral & Rewards</strong><span>Use coins for subscriptions or redeem them to your bank.</span></div><a routerLink="/referrals" class="btn btn-primary">Open rewards</a></div>
+
       <hr />
 
       <h3>Recent rides</h3>
@@ -95,6 +97,7 @@ import { DiditVerificationService, VerificationStatus } from './services/didit-v
     .subscription-summary { display:flex; flex-wrap:wrap; gap:8px 18px; margin-top:16px; padding:12px 14px; border:1px solid #cbd5e1; border-radius:8px; background:#f8fafc; }
     .subscription-summary span { color:#475569; }
     .subscription-summary .expired { color:#b91c1c; font-weight:700; }
+    .rewards-link { display:flex;justify-content:space-between;align-items:center;gap:14px;margin-top:16px;padding:14px;border:1px solid #b9e2d8;background:#f0fbf8;border-radius:8px }.rewards-link div{display:grid;gap:3px}.rewards-link span{color:#526577;font-size:.85rem}
     @media (max-width:600px) {
       .profile-top { flex-direction:column; align-items:flex-start }
       .profile-actions { width:100% }

@@ -42,9 +42,9 @@ import { ToastService } from './toast.service';
             <div *ngIf="!b.needsRating && (b.status === 'pending' || b.status === 'accepted') && b.ride?.status !== 'completed' && b.ride?.status !== 'cancelled'">
               <button class="btn btn-primary btn-sm" (click)="b.showShare = !b.showShare">Share live location</button>
               <div *ngIf="b.showShare" class="share-location-form">
-                <label>WhatsApp number (with country code)</label>
+                <label>WhatsApp number</label>
                 <div class="share-location-controls">
-                  <input [(ngModel)]="b.shareNumber" placeholder="e.g. 918765432100" />
+                  <input [(ngModel)]="b.shareNumber" placeholder="e.g. 8765432100" />
                   <button class="btn btn-primary btn-sm" (click)="shareLiveLocationFor(b)">Send</button>
                   <button class="btn btn-secondary btn-sm" (click)="closeShare(b)">Close</button>
                 </div>

@@ -159,7 +159,7 @@ export class MockDataService {
     }).pipe(map((response) => response.data));
   }
 
-  createCheckoutForPlan(planId: string): Observable<any> {
+  createCheckoutForPlan(planId: string, useCoins = false): Observable<any> {
     const successUrl = window.location.origin + '/owner/dashboard';
     const cancelUrl = window.location.origin + '/owner/register';
     if (!successUrl || !cancelUrl || !planId) {
@@ -167,6 +167,7 @@ export class MockDataService {
     }
     return this.http.post<ApiResponse<any>>(`${this.apiUrl}/subscriptions/create-checkout`, {
       planId,
+      useCoins,
       successUrl,
       cancelUrl
     }).pipe(map((response) => response.data));

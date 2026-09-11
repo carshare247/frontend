@@ -1,7 +1,7 @@
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 import { AuthService, UserSession } from './auth.service';
 import { ToastService } from './toast.service';
@@ -24,6 +24,9 @@ import { MockDataService } from './mock-data.service';
             <p class="eyebrow">CarShare247</p>
             <h1>Registration</h1>
           </div>
+          <button class="btn btn-ghost back-button" type="button" (click)="goBack()" aria-label="Go back to previous screen" title="Back">
+            <span class="back-icon" aria-hidden="true">←</span><span class="back-label">Back</span>
+          </button>
         </div>
 
         <div class="progress-wrap" *ngIf="steps.length">
@@ -72,6 +75,10 @@ import { MockDataService } from './mock-data.service';
               <option value="FEMALE">Female</option>
               <option value="OTHER">Other</option>
             </select>
+          </div>
+          <div class="field">
+            <label>Referral code <span class="muted-small">(optional)</span></label>
+            <input [(ngModel)]="referralCode" type="text" maxlength="20" placeholder="CAR247XXXXXX">
           </div>
           <div class="button-row">
             <button class="btn btn-primary" type="button" (click)="saveBasicDetails()">Save & continue</button>
@@ -162,7 +169,10 @@ import { MockDataService } from './mock-data.service';
     :host { display:block; }
     .reg-shell { min-height:100vh; display:flex; align-items:center; justify-content:center; background:#f8fafc; padding:24px; }
     .reg-card { width:min(860px, 100%); background:#fff; border-radius:20px; box-shadow:0 20px 50px rgba(15,23,42,0.08); padding:28px; }
-    .reg-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+    .reg-header { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:20px; }
+    .reg-header > div { min-width:0; }
+    .back-button { flex:0 0 auto; min-width:88px; min-height:44px; display:inline-flex; align-items:center; justify-content:center; gap:6px; white-space:nowrap; }
+    .back-icon { font-size:1.15rem; line-height:1; }
     .eyebrow { margin:0 0 6px; color:#6366f1; font-weight:700; letter-spacing:.08em; text-transform:uppercase; font-size:12px; }
     h1 { margin:0; }
     .progress-wrap { margin-bottom:18px; }
@@ -200,7 +210,9 @@ import { MockDataService } from './mock-data.service';
     @media (max-width: 600px) {
       .reg-shell { min-height:100dvh; align-items:flex-start; padding:12px 8px 24px; }
       .reg-card { width:100%; padding:18px 14px 22px; border-radius:16px; }
-      .reg-header { margin-bottom:16px; }
+      .reg-header { margin-bottom:16px; gap:8px; }
+      .back-button { width:44px; min-width:44px; height:44px; padding:0; border-radius:50%; }
+      .back-label { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
       h1 { font-size:1.75rem; }
       .progress-wrap { margin:0 -2px 14px; overflow:hidden; }
       .progress-bar { height:8px; }
@@ -233,6 +245,7 @@ export class RegistrationFlowComponent implements OnInit, OnDestroy {
   fullName = '';
   dateOfBirth = '';
   gender = '';
+  referralCode = '';
   otpCode = '';
   otpSent = false;
   otpBusy = false;
@@ -251,6 +264,8 @@ export class RegistrationFlowComponent implements OnInit, OnDestroy {
   constructor(
     private auth: AuthService,
     private router: Router,
+    private route: ActivatedRoute,
+    private location: Location,
     private toast: ToastService,
     private otpService: OtpVerificationService,
     private diditService: DiditVerificationService,
@@ -260,6 +275,7 @@ export class RegistrationFlowComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    this.referralCode = (this.route.snapshot.queryParamMap.get('ref') || '').trim().toUpperCase();
     this.resumeRegistration();
   }
 
@@ -267,6 +283,14 @@ export class RegistrationFlowComponent implements OnInit, OnDestroy {
     this.cameraStream?.getTracks().forEach(track => track.stop());
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  goBack(): void {
+    if (window.history.length > 1) {
+      this.location.back();
+      return;
+    }
+    void this.router.navigateByUrl('/');
   }
 
   private resumeRegistration(): void {
@@ -458,7 +482,10 @@ export class RegistrationFlowComponent implements OnInit, OnDestroy {
       this.fullName,
       this.gender,
       undefined,
-      firebaseUid
+      firebaseUid,
+      undefined,
+      this.referralCode || undefined,
+      this.deviceFingerprint()
     ).subscribe({
       next: () => this.registrationApi.saveBasicDetails({
         userType: this.selectedUserType!,
@@ -479,6 +506,16 @@ export class RegistrationFlowComponent implements OnInit, OnDestroy {
       }),
       error: (error) => this.toast.show(error?.error?.error?.message || 'Unable to create your account.', 'error')
     });
+  }
+
+  private deviceFingerprint(): string {
+    const key = 'carshare_device_id';
+    let value = localStorage.getItem(key);
+    if (!value) {
+      value = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      localStorage.setItem(key, value);
+    }
+    return value;
   }
 
   startDiditVerification(): void {

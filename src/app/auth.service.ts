@@ -10,6 +10,7 @@ import { RegistrationStateService } from './services/registration-state.service'
 export interface UserSession {
   id: string;
   role: 'passenger' | 'owner' | 'admin';
+  gender?: 'male' | 'female';
   mobile?: string;
   ownerId?: string;
   name?: string;
@@ -46,13 +47,15 @@ export class AuthService {
     return session;
   }
 
-  authenticate(mode: 'login' | 'register', role: 'passenger' | 'owner' | 'admin', mobile: string, password: string = '', dateOfBirth?: string, name?: string, gender?: string, photoDataUrl?: string, firebaseUid?: string, governmentIdProof?: File): Observable<UserSession> {
+  authenticate(mode: 'login' | 'register', role: 'passenger' | 'owner' | 'admin', mobile: string, password: string = '', dateOfBirth?: string, name?: string, gender?: string, photoDataUrl?: string, firebaseUid?: string, governmentIdProof?: File, referralCode?: string, deviceFingerprint?: string): Observable<UserSession> {
     const payload: any = { role: role.toUpperCase(), mobile };
     if (password && password.trim()) payload.password = password;
     if (dateOfBirth) payload.dateOfBirth = dateOfBirth;
     if (name) payload.name = name;
     if (gender) payload.gender = gender;
     if (firebaseUid) payload.firebaseUid = firebaseUid;
+    if (referralCode) payload.referralCode = referralCode.trim();
+    if (deviceFingerprint) payload.deviceFingerprint = deviceFingerprint;
 
     if (mode === 'register' && role === 'passenger') {
       const form = new FormData();
@@ -63,6 +66,8 @@ export class AuthService {
       if (payload.name) form.append('name', payload.name);
       if (payload.gender) form.append('gender', payload.gender);
       if (payload.firebaseUid) form.append('firebaseUid', payload.firebaseUid);
+      if (payload.referralCode) form.append('referralCode', payload.referralCode);
+      if (payload.deviceFingerprint) form.append('deviceFingerprint', payload.deviceFingerprint);
       if (photoDataUrl) form.append('profilePhoto', this.dataUrlToFile(photoDataUrl, 'profile-photo.png'));
       if (governmentIdProof) form.append('governmentIdProof', governmentIdProof);
       return this.http.post<{ data: any }>(`${this.apiUrl}/${mode}`, form).pipe(
@@ -91,7 +96,7 @@ export class AuthService {
         : `${base}/files/${rawProfilePhoto.replace(/^\/?(files\/)?/i, '')}`)
       : undefined;
     const session: UserSession = { id: token.userId, role: role as any, mobile: sanitizeMobile(token.mobile), ownerId: token.ownerId || undefined, name: token.name || undefined, profilePhoto, mobileVerified: token.mobileVerified === true, verificationStatus: token.verificationStatus || 'NOT_STARTED' };
-    if (token.gender) (session as any).gender = token.gender;
+    if (token.gender) session.gender = String(token.gender).toLowerCase() as UserSession['gender'];
     this.save(session);
     return session;
   }

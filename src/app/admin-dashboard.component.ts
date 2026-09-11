@@ -22,6 +22,7 @@ import { SubscriptionStatusWidgetComponent } from './components/subscription-sta
             <p class="muted-small">Manage users, rides and subscriptions.</p>
           </div>
           <div class="head-actions">
+            <button class="btn btn-secondary" (click)="openRewards()">Rewards & redemptions</button>
             <button class="btn btn-secondary" (click)="download()">↓ Download audit CSV</button>
             <button class="btn btn-ghost" (click)="logout()">Sign out</button>
           </div>
@@ -253,6 +254,10 @@ export class AdminDashboardComponent {
     this.loadRides();
     this.loadVerifications();
     this.loadLatestSubscription();
+  }
+
+  openRewards(): void {
+    void this.router.navigateByUrl('/Kumaresh/rewards');
   }
   get filtered() { return this.subscriptions; }
   get pendingCount() { return this.allSubscriptions.filter(s => s.status === 'VERIFICATION_IN_PROGRESS').length; }

@@ -192,9 +192,9 @@ export class HomeComponent {
     localStorage.setItem('search_passengers', String(this.passengers || 1));
     this.data.getRides({ from: this.from, to: this.to, date: this.date, passengers: this.passengers || 1 }).subscribe((r) => {
       const currentOrFuture = r.filter(ride => ride.date >= todayKey);
-      // if a ride is marked femaleOnly, hide it from male passengers
-      const current = this.auth.current as any;
-      if (current?.role === 'passenger' && current?.gender === 'male') {
+      // Female-only rides are visible only when registration gender is female.
+      const current = this.auth.current;
+      if (current?.role === 'passenger' && current.gender?.toLowerCase() !== 'female') {
         this.results = currentOrFuture.filter((ride) => !ride.femaleOnly);
       } else {
         this.results = currentOrFuture;

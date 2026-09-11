@@ -17,6 +17,14 @@ import { ToastService } from './toast.service';
         <p>Your monthly owner subscription helps us keep profiles verified and rides trustworthy.</p>
       </div>
       <section class="payment-card">
+        <div class="payment-breakdown" *ngIf="grossAmount">
+          <div><span>Subscription fee</span><strong>₹{{ grossAmount / 100 | number:'1.0-2' }}</strong></div>
+          <div><span>Available coins</span><strong>{{ availableCoins }}</strong></div>
+          <div><span>Maximum allowed coin usage</span><strong>{{ maximumAllowedCoins }}</strong></div>
+          <div><span>Coins applied</span><strong>-₹{{ coinsApplied }}</strong></div>
+          <div class="total"><span>Amount payable online</span><strong>₹{{ amount / 100 | number:'1.0-2' }}</strong></div>
+          <p>You can use only up to {{ subscriptionCoinPercentage }}% of the subscription amount through referral coins. Remaining amount must be paid through online payment.</p>
+        </div>
         <div class="payment-step"><span>01</span><div><strong>Pay securely by UPI</strong><small>Use any UPI app to send {{ amount / 100 | number:'1.0-2' }} {{ currency }}</small></div></div>
         <div class="upi-box"><span class="muted-small">UPI ID</span><strong>{{ upiId }}</strong><button class="btn btn-secondary btn-sm" (click)="copyUpi()">Copy</button></div>
         <div class="payment-step"><span>02</span><div><strong>Confirm your transfer</strong><small>Enter the UTR shown in your UPI app</small></div></div>
@@ -39,6 +47,7 @@ import { ToastService } from './toast.service';
     .payment-hero h1 span { color:#0f766e; }
     .payment-hero p { max-width:38ch; color:#475569; font-size:1.05rem; line-height:1.6; }
     .payment-card { background:#fff; border:1px solid #dbe4ea; border-radius:18px; padding:28px; box-shadow:0 20px 50px rgba(15,23,42,.1); }
+    .payment-breakdown{display:grid;gap:8px;margin-bottom:24px;padding-bottom:18px;border-bottom:1px solid #dbe4ea}.payment-breakdown div{display:flex;justify-content:space-between;gap:12px}.payment-breakdown .total{padding-top:8px;border-top:1px solid #dbe4ea;color:#0f766e}.payment-breakdown p{margin:4px 0 0;color:#64748b;font-size:.8rem;line-height:1.4}
     .payment-step { display:flex; gap:14px; align-items:center; margin-bottom:18px; }
     .payment-step > span { color:#0f766e; font-weight:900; font-size:1.15rem; }
     .payment-step strong,.payment-step small { display:block; }
@@ -59,11 +68,21 @@ export class OwnerPaymentComponent {
   submitted = false;
   refreshing = false;
   amount = 0;
+  grossAmount = 0;
+  availableCoins = 0;
+  maximumAllowedCoins = 0;
+  coinsApplied = 0;
+  subscriptionCoinPercentage = 50;
   currency = 'INR';
 
   constructor(private route: ActivatedRoute, private data: MockDataService, private toast: ToastService, public router: Router) {
     this.subscriptionId = this.route.snapshot.queryParamMap.get('subscriptionId') || '';
     this.amount = Number(this.route.snapshot.queryParamMap.get('amount') || 0);
+    this.grossAmount = Number(this.route.snapshot.queryParamMap.get('grossAmount') || this.amount);
+    this.availableCoins = Number(this.route.snapshot.queryParamMap.get('availableCoins') || 0);
+    this.maximumAllowedCoins = Number(this.route.snapshot.queryParamMap.get('maximumAllowedCoins') || 0);
+    this.coinsApplied = Number(this.route.snapshot.queryParamMap.get('coinsApplied') || 0);
+    this.subscriptionCoinPercentage = Number(this.route.snapshot.queryParamMap.get('subscriptionCoinPercentage') || 50);
     this.currency = this.route.snapshot.queryParamMap.get('currency') || 'INR';
     this.data.getMySubscriptions().subscribe({ next: (subscriptions) => {
       const current = subscriptions[0];

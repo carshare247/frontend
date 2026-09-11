@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { MockDataService } from './mock-data.service';
 import { ToastService } from './toast.service';
+import { RewardsService } from './services/rewards.service';
 
 @Component({
   selector: 'app-subscription-plans',
@@ -20,6 +21,11 @@ import { ToastService } from './toast.service';
 
       <div *ngIf="loading" class="muted-small">Loading plans…</div>
       <div *ngIf="!loading && !plans.length" class="empty">No subscription plans available. Contact support.</div>
+
+      <label class="coin-option" *ngIf="availableCoins > 0">
+        <input type="checkbox" [(ngModel)]="useCoins">
+        <span><strong>Use referral coins</strong><small>{{ availableCoins }} coins available. Up to {{ subscriptionCoinPercentage }}% of the plan fee can be applied.</small></span>
+      </label>
 
       <div class="plans-grid">
         <div *ngFor="let p of plans" class="plan-card" [class.recommended]="isRecommended(p)">
@@ -96,6 +102,7 @@ import { ToastService } from './toast.service';
     .btn-primary { background:linear-gradient(90deg,#6d28d9,#8b5cf6); color:white; border:0; padding:10px 14px; border-radius:10px }
     .monthly-note { margin-top:8px; color:#0f766e; font-weight:700 }
     .empty { color:#64748b; padding:18px }
+    .coin-option { display:flex;align-items:flex-start;gap:10px;margin-top:16px;padding:14px;border:1px solid #99d5c8;background:#f0fbf8;border-radius:8px }.coin-option input{width:18px;height:18px}.coin-option span{display:grid;gap:3px}.coin-option small{color:#526577}
 
     /* Mobile adjustments */
     @media (max-width: 719px) {
@@ -109,8 +116,12 @@ import { ToastService } from './toast.service';
 export class SubscriptionPlansComponent {
   plans: any[] = [];
   loading = false;
-  constructor(private data: MockDataService, private router: Router, private toast: ToastService) {
+  useCoins = false;
+  availableCoins = 0;
+  subscriptionCoinPercentage = 50;
+  constructor(private data: MockDataService, private router: Router, private toast: ToastService, private rewards: RewardsService) {
     this.loadPlans();
+    this.rewards.dashboard().subscribe({ next: dashboard => { this.availableCoins = dashboard.availableCoins; this.subscriptionCoinPercentage = dashboard.subscriptionCoinPercentage; }, error: () => {} });
   }
 
   loadPlans() {
@@ -121,12 +132,12 @@ export class SubscriptionPlansComponent {
   select(plan: any) {
     if (!plan || !plan.id) { this.toast.show('Invalid plan selected', 'error'); return; }
     if (!window.location.origin) { this.toast.show('Unable to determine app URL', 'error'); return; }
-    this.data.createCheckoutForPlan(plan.id).subscribe({ next: (checkout) => {
+    this.data.createCheckoutForPlan(plan.id, this.useCoins).subscribe({ next: (checkout) => {
       if (checkout && checkout.checkoutUrl) {
         window.location.href = checkout.checkoutUrl;
         return;
       }
-      this.router.navigate(['/owner/payment'], { queryParams: { subscriptionId: checkout.subscriptionId, amount: checkout.amount, currency: checkout.currency } });
+      this.router.navigate(['/owner/payment'], { queryParams: { subscriptionId: checkout.subscriptionId, amount: checkout.amount, grossAmount: checkout.grossAmount, availableCoins: checkout.availableCoins, maximumAllowedCoins: checkout.maximumAllowedCoins, coinsApplied: checkout.coinsApplied, subscriptionCoinPercentage: checkout.subscriptionCoinPercentage, currency: checkout.currency } });
     }, error: (err) => {
       console.error('Checkout error:', err);
       this.toast.show('Unable to create checkout', 'error');
