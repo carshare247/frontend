@@ -48,6 +48,8 @@ export interface LocationItem {
   longitude?: number;
   boundingBox?: string;
   city?: string;
+  locality?: string;
+  street?: string;
   country?: string;
   locationType?: string;
   geofenceRadius?: number;

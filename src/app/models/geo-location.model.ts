@@ -15,6 +15,9 @@ export interface GeoLocation {
   longitude: number;
   boundingBox?: BoundingBox;
   city?: string;
+  locality?: string;
+  street?: string;
+  hierarchy?: string[];
   state?: string;
   country?: string;
   locationType: GeoLocationType;

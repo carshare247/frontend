@@ -11,6 +11,7 @@ import { getVerificationUIState, normalizeVerificationStatus, VerificationStatus
 import { RideSearchRequest, RideSearchResult } from '../models/multi-stop-ride.model';
 import { LocationService } from '../services/location.service';
 import { GeoLocation } from '../models/geo-location.model';
+import { Subscription } from 'rxjs';
 
 /**
  * Component for searching multi-stop rides.
@@ -53,7 +54,7 @@ import { GeoLocation } from '../models/geo-location.model';
             <label>From Location</label>
             <div class="location-autocomplete">
               <input type="text" formControlName="fromLocation" placeholder="Type starting stop" required
-                (input)="onLocationInput('from', $any($event.target).value)" (focus)="filterLocations('from', searchForm.get('fromLocation')?.value || '')" autocomplete="off" />
+                (input)="onLocationInput('from', $any($event.target).value)" (focus)="onLocationFocus('from')" autocomplete="off" />
               <div class="location-suggestions" *ngIf="activeLocationField === 'from' && fromLocationSuggestions.length">
                 <button type="button" *ngFor="let location of fromLocationSuggestions" (mousedown)="selectLocation('from', location)">
                   {{ location.displayName || location.district }} <span>India</span>
@@ -65,7 +66,7 @@ import { GeoLocation } from '../models/geo-location.model';
             <label>To Location</label>
             <div class="location-autocomplete">
               <input type="text" formControlName="toLocation" placeholder="Type destination stop" required
-                (input)="onLocationInput('to', $any($event.target).value)" (focus)="filterLocations('to', searchForm.get('toLocation')?.value || '')" autocomplete="off" />
+                (input)="onLocationInput('to', $any($event.target).value)" (focus)="onLocationFocus('to')" autocomplete="off" />
               <div class="location-suggestions" *ngIf="activeLocationField === 'to' && toLocationSuggestions.length">
                 <button type="button" *ngFor="let location of toLocationSuggestions" (mousedown)="selectLocation('to', location)">
                   {{ location.displayName || location.district }} <span>India</span>
@@ -817,6 +818,9 @@ export class MultiStopRideSearchComponent implements OnInit {
   activeLocationField: 'from' | 'to' | null = null;
   verificationStatus: VerificationStatus = 'NOT_STARTED';
   verificationLoading = false;
+  private locationSearchTimers: Partial<Record<'from' | 'to', ReturnType<typeof setTimeout>>> = {};
+  private locationSearchSubscriptions: Partial<Record<'from' | 'to', Subscription>> = {};
+  private locationSearchVersions: Record<'from' | 'to', number> = { from: 0, to: 0 };
 
   constructor(
     private fb: FormBuilder,
@@ -873,6 +877,9 @@ export class MultiStopRideSearchComponent implements OnInit {
 
   filterLocations(field: 'from' | 'to', value: string) {
     this.activeLocationField = field;
+    const version = ++this.locationSearchVersions[field];
+    if (this.locationSearchTimers[field]) clearTimeout(this.locationSearchTimers[field]);
+    this.locationSearchSubscriptions[field]?.unsubscribe();
     const query = String(value || '').trim().toLowerCase();
     const oppositeField = field === 'from' ? 'toLocation' : 'fromLocation';
     const oppositeValue = String(this.searchForm.get(oppositeField)?.value || '').trim().toLowerCase();
@@ -881,18 +888,22 @@ export class MultiStopRideSearchComponent implements OnInit {
       else this.toLocationSuggestions = [];
       return;
     }
-    this.locationService.search(query).subscribe({
-      next: locations => {
-        const suggestions = locations.map(location => this.toLocationItem(location))
-          .filter(location => location.district.trim().toLowerCase() !== oppositeValue);
-        if (field === 'from') this.fromLocationSuggestions = suggestions;
-        else this.toLocationSuggestions = suggestions;
-      },
-      error: () => {
-        if (field === 'from') this.fromLocationSuggestions = [];
-        else this.toLocationSuggestions = [];
-      }
-    });
+    this.locationSearchTimers[field] = setTimeout(() => {
+      this.locationSearchSubscriptions[field] = this.locationService.search(query).subscribe({
+        next: locations => {
+          if (version !== this.locationSearchVersions[field]) return;
+          const suggestions = locations.map(location => this.toLocationItem(location))
+            .filter(location => location.district.trim().toLowerCase() !== oppositeValue);
+          if (field === 'from') this.fromLocationSuggestions = suggestions;
+          else this.toLocationSuggestions = suggestions;
+        },
+        error: () => {
+          if (version !== this.locationSearchVersions[field]) return;
+          if (field === 'from') this.fromLocationSuggestions = [];
+          else this.toLocationSuggestions = [];
+        }
+      });
+    }, 300);
   }
 
   onLocationInput(field: 'from' | 'to', value: string) {
@@ -901,7 +912,16 @@ export class MultiStopRideSearchComponent implements OnInit {
     this.filterLocations(field, value);
   }
 
+  onLocationFocus(field: 'from' | 'to') {
+    this.activeLocationField = field;
+    const suggestions = field === 'from' ? this.fromLocationSuggestions : this.toLocationSuggestions;
+    if (!suggestions.length) this.filterLocations(field, this.searchForm.get(`${field}Location`)?.value || '');
+  }
+
   selectLocation(field: 'from' | 'to', location: LocationItem) {
+    this.locationSearchVersions[field]++;
+    if (this.locationSearchTimers[field]) clearTimeout(this.locationSearchTimers[field]);
+    this.locationSearchSubscriptions[field]?.unsubscribe();
     const prefix = field === 'from' ? 'from' : 'to';
     this.searchForm.patchValue({
       [`${prefix}Location`]: location.displayName || location.district,
@@ -917,6 +937,9 @@ export class MultiStopRideSearchComponent implements OnInit {
       state: location.state || '',
       district: location.city || location.displayName,
       displayName: location.displayName,
+      city: location.city,
+      locality: location.locality,
+      street: location.street,
       latitude: location.latitude,
       longitude: location.longitude,
       geofenceRadius: location.geofenceRadius,
