@@ -42,6 +42,15 @@ export interface LocationItem {
   id: string;
   state: string;
   district: string;
+  osmId?: string;
+  displayName?: string;
+  latitude?: number;
+  longitude?: number;
+  boundingBox?: string;
+  city?: string;
+  country?: string;
+  locationType?: string;
+  geofenceRadius?: number;
 }
 
 export interface ApiResponse<T> {

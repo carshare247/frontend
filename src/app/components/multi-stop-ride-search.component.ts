@@ -9,6 +9,8 @@ import { AuthService } from '../auth.service';
 import { DiditVerificationService } from '../services/didit-verification.service';
 import { getVerificationUIState, normalizeVerificationStatus, VerificationStatus } from '../services/verification-state';
 import { RideSearchRequest, RideSearchResult } from '../models/multi-stop-ride.model';
+import { LocationService } from '../services/location.service';
+import { GeoLocation } from '../models/geo-location.model';
 
 /**
  * Component for searching multi-stop rides.
@@ -51,10 +53,10 @@ import { RideSearchRequest, RideSearchResult } from '../models/multi-stop-ride.m
             <label>From Location</label>
             <div class="location-autocomplete">
               <input type="text" formControlName="fromLocation" placeholder="Type starting stop" required
-                (input)="filterLocations('from', $any($event.target).value)" (focus)="filterLocations('from', searchForm.get('fromLocation')?.value || '')" autocomplete="off" />
+                (input)="onLocationInput('from', $any($event.target).value)" (focus)="filterLocations('from', searchForm.get('fromLocation')?.value || '')" autocomplete="off" />
               <div class="location-suggestions" *ngIf="activeLocationField === 'from' && fromLocationSuggestions.length">
                 <button type="button" *ngFor="let location of fromLocationSuggestions" (mousedown)="selectLocation('from', location)">
-                  {{ location.district }} <span>{{ location.state }}</span>
+                  {{ location.displayName || location.district }} <span>India</span>
                 </button>
               </div>
             </div>
@@ -63,10 +65,10 @@ import { RideSearchRequest, RideSearchResult } from '../models/multi-stop-ride.m
             <label>To Location</label>
             <div class="location-autocomplete">
               <input type="text" formControlName="toLocation" placeholder="Type destination stop" required
-                (input)="filterLocations('to', $any($event.target).value)" (focus)="filterLocations('to', searchForm.get('toLocation')?.value || '')" autocomplete="off" />
+                (input)="onLocationInput('to', $any($event.target).value)" (focus)="filterLocations('to', searchForm.get('toLocation')?.value || '')" autocomplete="off" />
               <div class="location-suggestions" *ngIf="activeLocationField === 'to' && toLocationSuggestions.length">
                 <button type="button" *ngFor="let location of toLocationSuggestions" (mousedown)="selectLocation('to', location)">
-                  {{ location.district }} <span>{{ location.state }}</span>
+                  {{ location.displayName || location.district }} <span>India</span>
                 </button>
               </div>
             </div>
@@ -823,7 +825,8 @@ export class MultiStopRideSearchComponent implements OnInit {
     private router: Router,
     private toast: ToastService,
     private auth: AuthService,
-    private didit: DiditVerificationService
+    private didit: DiditVerificationService,
+    private locationService: LocationService
   ) {}
 
   get verificationState() { return getVerificationUIState(this.verificationStatus); }
@@ -855,10 +858,7 @@ export class MultiStopRideSearchComponent implements OnInit {
   }
 
   private loadLocations() {
-    this.rideLocations.getLocations().subscribe({
-      next: locations => this.allLocations = this.uniqueLocations(locations),
-      error: () => this.toast.show('Unable to load locations', 'error')
-    });
+    this.allLocations = [];
   }
 
   private uniqueLocations(locations: LocationItem[]): LocationItem[] {
@@ -876,16 +876,52 @@ export class MultiStopRideSearchComponent implements OnInit {
     const query = String(value || '').trim().toLowerCase();
     const oppositeField = field === 'from' ? 'toLocation' : 'fromLocation';
     const oppositeValue = String(this.searchForm.get(oppositeField)?.value || '').trim().toLowerCase();
-    const suggestions = (query.length < 1 ? this.allLocations : this.allLocations.filter(location =>
-      location.district.toLowerCase().includes(query)
-    )).filter(location => location.district.trim().toLowerCase() !== oppositeValue);
-    if (field === 'from') this.fromLocationSuggestions = suggestions.slice(0, 10);
-    else this.toLocationSuggestions = suggestions.slice(0, 10);
+    if (query.length < 2) {
+      if (field === 'from') this.fromLocationSuggestions = [];
+      else this.toLocationSuggestions = [];
+      return;
+    }
+    this.locationService.search(query).subscribe({
+      next: locations => {
+        const suggestions = locations.map(location => this.toLocationItem(location))
+          .filter(location => location.district.trim().toLowerCase() !== oppositeValue);
+        if (field === 'from') this.fromLocationSuggestions = suggestions;
+        else this.toLocationSuggestions = suggestions;
+      },
+      error: () => {
+        if (field === 'from') this.fromLocationSuggestions = [];
+        else this.toLocationSuggestions = [];
+      }
+    });
+  }
+
+  onLocationInput(field: 'from' | 'to', value: string) {
+    const prefix = field === 'from' ? 'from' : 'to';
+    this.searchForm.patchValue({ [`${prefix}Latitude`]: null, [`${prefix}Longitude`]: null }, { emitEvent: false });
+    this.filterLocations(field, value);
   }
 
   selectLocation(field: 'from' | 'to', location: LocationItem) {
-    this.searchForm.get(field === 'from' ? 'fromLocation' : 'toLocation')?.setValue(location.district);
+    const prefix = field === 'from' ? 'from' : 'to';
+    this.searchForm.patchValue({
+      [`${prefix}Location`]: location.displayName || location.district,
+      [`${prefix}Latitude`]: location.latitude,
+      [`${prefix}Longitude`]: location.longitude
+    });
     this.activeLocationField = null;
+  }
+
+  private toLocationItem(location: GeoLocation): LocationItem {
+    return {
+      id: location.id || location.osmId || '',
+      state: location.state || '',
+      district: location.city || location.displayName,
+      displayName: location.displayName,
+      latitude: location.latitude,
+      longitude: location.longitude,
+      geofenceRadius: location.geofenceRadius,
+      osmId: location.osmId
+    };
   }
 
   /**
@@ -895,6 +931,10 @@ export class MultiStopRideSearchComponent implements OnInit {
     this.searchForm = this.fb.group({
       fromLocation: ['', Validators.required],
       toLocation: ['', Validators.required],
+      fromLatitude: [null, Validators.required],
+      fromLongitude: [null, Validators.required],
+      toLatitude: [null, Validators.required],
+      toLongitude: [null, Validators.required],
       date: ['', Validators.required],
       seats: ['', Validators.required]
     });
@@ -906,6 +946,10 @@ export class MultiStopRideSearchComponent implements OnInit {
   onSearch() {
     if (!this.searchForm.valid) {
       this.errorMessage = 'Please fill all fields';
+      return;
+    }
+    if (!["fromLatitude", "fromLongitude", "toLatitude", "toLongitude"].every(field => this.hasCoordinate(this.searchForm.get(field)?.value))) {
+      this.errorMessage = 'Select both locations from the dropdown suggestions.';
       return;
     }
 
@@ -931,6 +975,10 @@ export class MultiStopRideSearchComponent implements OnInit {
     const request: RideSearchRequest = {
       fromLocation,
       toLocation,
+      fromLatitude: Number(this.searchForm.get('fromLatitude')?.value),
+      fromLongitude: Number(this.searchForm.get('fromLongitude')?.value),
+      toLatitude: Number(this.searchForm.get('toLatitude')?.value),
+      toLongitude: Number(this.searchForm.get('toLongitude')?.value),
       date: requestedDate,
       seats: parseInt(this.searchForm.get('seats')?.value, 10),
       includeFull: true
@@ -957,6 +1005,10 @@ export class MultiStopRideSearchComponent implements OnInit {
         this.toast.show(this.errorMessage, 'error');
       }
     });
+  }
+
+  private hasCoordinate(value: unknown): boolean {
+    return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
   }
 
   /**

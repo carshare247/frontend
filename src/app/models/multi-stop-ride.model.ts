@@ -91,6 +91,10 @@ export interface RideDetails {
 export interface RideSearchRequest {
   fromLocation: string;
   toLocation: string;
+  fromLatitude?: number;
+  fromLongitude?: number;
+  toLatitude?: number;
+  toLongitude?: number;
   date: string; // YYYY-MM-DD format
   seats: number;
   includeFull?: boolean;

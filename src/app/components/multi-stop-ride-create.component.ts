@@ -8,6 +8,9 @@ import { ToastService } from '../toast.service';
 import { MockDataService, LocationItem } from '../mock-data.service';
 import { CreateMultiStopRideRequest, PricingType, RideStop, SegmentPriceRule } from '../models/multi-stop-ride.model';
 import { RegistrationApiService } from '../services/registration-api.service';
+import { LocationService } from '../services/location.service';
+import { GeoLocation } from '../models/geo-location.model';
+import { Subscription } from 'rxjs';
 
 /**
  * Component for creating multi-stop rides with segmented pricing.
@@ -105,10 +108,18 @@ import { RegistrationApiService } from '../services/registration-api.service';
                         (input)="filterStopLocations(i, $any($event.target).value)" (focus)="filterStopLocations(i, stop.get('locationName')?.value || '')" />
                       <div class="location-suggestions" *ngIf="activeStopIndex === i && stopLocationSuggestions.length">
                         <button type="button" *ngFor="let location of stopLocationSuggestions" (mousedown)="selectStopLocation(i, location)">
-                          {{ location.district }} <span>{{ location.state }}</span>
+                          <span class="location-primary">{{ location.displayName || location.district }}</span>
+                          <span class="location-secondary">{{ location.latitude | number:'1.4-6' }}, {{ location.longitude | number:'1.4-6' }}</span>
                         </button>
                       </div>
                     </div>
+                    <div class="selected-location" *ngIf="stop.get('latitude')?.value as latitude">
+                      <span>Selected coordinates: {{ latitude | number:'1.4-6' }}, {{ stop.get('longitude')?.value | number:'1.4-6' }}</span>
+                      <span>Geofence: {{ stop.get('geofenceRadius')?.value || 1000 }} m</span>
+                    </div>
+                    <small class="error" *ngIf="stop.get('locationName')?.value && !stop.get('latitude')?.value">
+                      Select a location from the dropdown suggestions.
+                    </small>
                   </div>
                 </div>
 
@@ -289,7 +300,9 @@ import { RegistrationApiService } from '../services/registration-api.service';
       cursor: pointer;
     }
     .location-suggestions button:hover { background: #f4f7ff; }
-    .location-suggestions span { color: #64748b; font-size: 12px; }
+    .location-suggestions .location-primary { color: #1f2937; font-size: 13px; }
+    .location-suggestions .location-secondary { color: #64748b; font-size: 11px; white-space: nowrap; }
+    .selected-location { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 6px; color: #0f766e; font-size: 11px; }
 
     .field small {
       margin-top: 4px;
@@ -595,6 +608,9 @@ export class MultiStopRideCreateComponent implements OnInit {
   allLocations: LocationItem[] = [];
   stopLocationSuggestions: LocationItem[] = [];
   activeStopIndex: number | null = null;
+  private locationSearchVersion = 0;
+  private locationSearchTimer: ReturnType<typeof setTimeout> | null = null;
+  private locationSearchSubscription?: Subscription;
 
   constructor(
     private fb: FormBuilder,
@@ -604,6 +620,7 @@ export class MultiStopRideCreateComponent implements OnInit {
     private router: Router,
     private toast: ToastService,
     private registrationApi: RegistrationApiService
+    , private locationService: LocationService
   ) {}
 
   ngOnInit() {
@@ -613,33 +630,55 @@ export class MultiStopRideCreateComponent implements OnInit {
   }
 
   private loadLocations() {
-    this.locations.getLocations().subscribe({
-      next: locations => {
-        const seen = new Set<string>();
-        this.allLocations = (locations || []).filter(location => {
-          const key = location.district.trim().toLowerCase();
-          if (!key || seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        }).sort((a, b) => a.district.localeCompare(b.district));
-      },
-      error: () => this.toast.show('Unable to load locations', 'error')
-    });
+    this.allLocations = [];
   }
 
   filterStopLocations(index: number, value: string) {
     this.activeStopIndex = index;
+    const searchVersion = ++this.locationSearchVersion;
+    if (this.locationSearchTimer) clearTimeout(this.locationSearchTimer);
+    this.locationSearchSubscription?.unsubscribe();
     const query = String(value || '').trim().toLowerCase();
+    const stop = this.stops.at(index);
+    if (stop.get('displayName')?.value !== value) {
+      stop.patchValue({ latitude: null, longitude: null, geofenceRadius: null, osmId: null, displayName: null }, { emitEvent: false });
+    }
     const selectedLocations = this.stops.controls
       .map((stop, stopIndex) => stopIndex === index ? '' : String(stop.get('locationName')?.value || '').trim().toLowerCase())
       .filter(Boolean);
-    this.stopLocationSuggestions = (query.length < 1 ? this.allLocations : this.allLocations.filter(location =>
-      location.district.toLowerCase().includes(query)
-    )).filter(location => !selectedLocations.includes(location.district.trim().toLowerCase())).slice(0, 10);
+    if (query.length < 2) {
+      this.stopLocationSuggestions = [];
+      return;
+    }
+    this.locationSearchTimer = setTimeout(() => {
+      this.locationSearchSubscription = this.locationService.search(query).subscribe({
+        next: locations => {
+          if (searchVersion !== this.locationSearchVersion || this.activeStopIndex !== index) return;
+          this.stopLocationSuggestions = locations
+            .map(location => this.toLocationItem(location))
+            .filter(location => !selectedLocations.includes(location.district.trim().toLowerCase()));
+        },
+        error: () => {
+          if (searchVersion === this.locationSearchVersion && this.activeStopIndex === index) {
+            this.stopLocationSuggestions = [];
+          }
+        }
+      });
+    }, 300);
   }
 
   selectStopLocation(index: number, location: LocationItem) {
-    this.stops.at(index).get('locationName')?.setValue(location.district);
+    this.locationSearchVersion++;
+    if (this.locationSearchTimer) clearTimeout(this.locationSearchTimer);
+    this.locationSearchSubscription?.unsubscribe();
+    this.stops.at(index).patchValue({
+      locationName: location.displayName || location.district,
+      latitude: location.latitude,
+      longitude: location.longitude,
+      geofenceRadius: location.geofenceRadius,
+      osmId: location.osmId,
+      displayName: location.displayName
+    });
     this.activeStopIndex = null;
   }
 
@@ -680,9 +719,31 @@ export class MultiStopRideCreateComponent implements OnInit {
   private createStopControl(): FormGroup {
     return this.fb.group({
       locationName: ['', Validators.required],
+      latitude: [null, Validators.required],
+      longitude: [null, Validators.required],
+      geofenceRadius: [null],
+      osmId: [null],
+      displayName: [null],
       arrivalTime: [null],
       departureTime: [null]
     });
+  }
+
+  private toLocationItem(location: GeoLocation): LocationItem {
+    return {
+      id: location.id || location.osmId || '',
+      state: location.state || '',
+      district: location.city || location.displayName,
+      displayName: location.displayName,
+      latitude: location.latitude,
+      longitude: location.longitude,
+      boundingBox: location.boundingBox ? JSON.stringify(location.boundingBox) : undefined,
+      city: location.city,
+      country: location.country,
+      locationType: location.locationType,
+      geofenceRadius: location.geofenceRadius,
+      osmId: location.osmId
+    };
   }
 
   /**
@@ -836,6 +897,19 @@ export class MultiStopRideCreateComponent implements OnInit {
    */
   onSubmit() {
     this.activeStopIndex = null;
+    const missingGeoSelection = this.stops.controls.some(stop =>
+      !this.hasCoordinate(stop.get('latitude')?.value)
+      || !this.hasCoordinate(stop.get('longitude')?.value)
+    );
+    if (missingGeoSelection) {
+      this.errorMessage = 'Select every location from the dropdown suggestions. Manually typed locations are not accepted.';
+      this.stops.controls.forEach(stop => {
+        stop.get('locationName')?.markAsTouched();
+        stop.get('latitude')?.markAsTouched();
+        stop.get('longitude')?.markAsTouched();
+      });
+      return;
+    }
     const stopNames = this.stops.controls.map(stop => String(stop.get('locationName')?.value || '').trim().toLowerCase());
     if (new Set(stopNames).size !== stopNames.length) {
       this.errorMessage = 'Each stop must be a different location';
@@ -883,6 +957,10 @@ export class MultiStopRideCreateComponent implements OnInit {
         this.toast.show(this.errorMessage, 'error');
       }
     });
+  }
+
+  private hasCoordinate(value: unknown): boolean {
+    return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
   }
 
   private localDateKey(): string {
