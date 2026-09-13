@@ -109,7 +109,10 @@ export class OwnerRidesComponent implements OnDestroy {
 
   load() {
     if (!this.ownerId) { this.myRides = []; return; }
-    this.data.getOwnerRides(this.ownerId).subscribe((rides) => this.myRides = rides);
+    this.data.getOwnerRides(this.ownerId).subscribe({
+      next: (rides) => this.myRides = rides,
+      error: () => this.toast.show('Unable to load your rides. Please retry.', 'error')
+    });
   }
 
   markCompleted(r: Ride) {
