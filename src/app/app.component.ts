@@ -220,11 +220,11 @@ export class AppComponent {
 
   onNotificationClick(n: any) {
     if (!n) return;
-    // mark as read then navigate if url present
     if (!n.read) this.markRead(n);
-    if (n.url) {
-      try { this.router.navigateByUrl(n.url); } catch (e) { /* ignore */ }
-    }
+    const session = this.auth.current;
+    const notificationText = `${n.title || ''} ${n.body || n.message || ''}`.toLowerCase();
+    const route = n.url || n.route || (session?.role === 'owner' && notificationText.includes('parcel') ? '/owner/parcel-dashboard' : '/');
+    try { void this.router.navigateByUrl(route); } catch { /* ignore */ }
   }
 
   refreshOwnerSubscription() {

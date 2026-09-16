@@ -19,6 +19,7 @@ import { RewardsService } from './services/rewards.service';
       <section class="metrics" aria-label="Platform summary">
         <div><span>Users</span><strong>{{ users }}</strong><small>All registered users</small></div>
         <div><span>Rides</span><strong>{{ rides }}</strong><small>All posted rides</small></div>
+        <div><span>Parcels</span><strong>{{ parcels }}</strong><small>All parcel requests</small></div>
         <div><span>Approved subscriptions</span><strong>{{ approvedSubscriptions }}</strong><small>Active approvals recorded</small></div>
         <div><span>Resolved tickets</span><strong>{{ resolvedTickets }}</strong><small>Support issues closed</small></div>
       </section>
@@ -41,11 +42,12 @@ import { RewardsService } from './services/rewards.service';
   `]
 })
 export class AdminHomeComponent {
-  users=0; rides=0; approvedSubscriptions=0; resolvedTickets=0;
+  users=0; rides=0; parcels=0; approvedSubscriptions=0; resolvedTickets=0;
   readonly modules=[
     {title:'Subscriptions',description:'Review payments, approve UTR submissions, and export the ledger.',route:'/Kumaresh/subscriptions',icon:'₹',count:0},
     {title:'Users',description:'Inspect registered owners and account verification details.',route:'/Kumaresh/users',icon:'U',count:0},
     {title:'Rides',description:'Monitor active, completed, cancelled, and female-only rides.',route:'/Kumaresh/rides',icon:'R'},
+    {title:'Parcels',description:'Review parcel requests and configure the delivery amount.',route:'/Kumaresh/parcels',icon:'P',count:0},
     {title:'Support tickets',description:'Triage user issues and record resolutions.',route:'/Kumaresh/tickets',icon:'?',count:0},
     {title:'Didit verification',description:'Review identity sessions and synchronize decisions with Didit.',route:'/Kumaresh/didit',icon:'ID',count:0},
     {title:'Rewards & redemptions',description:'Manage referrals, wallet adjustments, settings, and payouts.',route:'/Kumaresh/rewards',icon:'C',count:0}
@@ -54,6 +56,7 @@ export class AdminHomeComponent {
     if(auth.current?.role!=='admin'){void router.navigateByUrl('/Kumaresh');return;}
     data.getAdminUsers().subscribe({next:rows=>{this.users=rows?.length||0;this.setCount('Users',(rows||[]).filter((item:any)=>['PENDING','PENDING_VERIFICATION','UNDER_REVIEW','IN_REVIEW','INITIATED'].includes(String(item.verificationStatus||'').toUpperCase())).length)}});
     data.getAdminRides().subscribe({next:rows=>this.rides=rows?.length||0});
+    data.getAdminParcels().subscribe({next:rows=>{this.parcels=rows?.length||0;this.setCount('Parcels',this.parcels)}});
     data.getAdminSubscriptions('').subscribe({next:rows=>{const items=rows||[];this.approvedSubscriptions=items.filter((item:any)=>item.status==='PAID').length;this.setCount('Subscriptions',items.filter((item:any)=>['PENDING','VERIFICATION_IN_PROGRESS'].includes(String(item.status||'').toUpperCase())).length)}});
     data.getAdminTickets('').subscribe({next:rows=>{const items=rows||[];this.resolvedTickets=items.filter((item:any)=>String(item.status||'').toUpperCase()==='RESOLVED').length;this.setCount('Support tickets',items.filter((item:any)=>String(item.status||'').toUpperCase()!=='RESOLVED').length)}});
     data.getAdminDiditVerifications().subscribe({next:rows=>this.setCount('Didit verification',(rows||[]).filter((item:any)=>['PENDING_VERIFICATION','UNDER_REVIEW','INITIATED','IN_REVIEW'].includes(String(item.status||'').toUpperCase())).length)});

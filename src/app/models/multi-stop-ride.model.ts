@@ -54,6 +54,7 @@ export interface CreateMultiStopRideRequest {
   carModel?: string;
   totalSeats: number;
   femaleOnly?: boolean;
+  acceptParcel?: boolean;
 }
 
 /**
@@ -97,6 +98,7 @@ export interface RideSearchRequest {
   toLongitude?: number;
   date: string; // YYYY-MM-DD format
   seats: number;
+  parcelSearch?: boolean;
   includeFull?: boolean;
   page?: number;
   size?: number;
@@ -125,6 +127,7 @@ export interface RideSearchResult {
   routePreview: string;
   routeStops: RouteStopDetail[];
   femaleOnly: boolean;
+  acceptParcel?: boolean;
   distanceKm?: number;
 }
 

@@ -5,6 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import { MockDataService, Ride } from './mock-data.service';
 import { AuthService } from './auth.service';
 import { ToastService } from './toast.service';
+import { CarbonApiService } from './services/carbon-api.service';
 
 
 @Component({
@@ -75,6 +76,21 @@ import { ToastService } from './toast.service';
       </div>
     </section>
 
+    <section class="impact-card mb-2">
+      <div>
+        <span class="impact-kicker">YOUR SHARED-MOBILITY IMPACT</span>
+        <h3>Carbon impact</h3>
+        <p>Live environmental savings calculated from your shared rides.</p>
+      </div>
+      <div class="impact-metrics">
+        <div><strong>{{ carbonSummary.rides }}</strong><span>rides</span></div>
+        <div><strong>{{ carbonSummary.distance }}</strong><span>km shared</span></div>
+        <div><strong>{{ carbonSummary.co2 }}</strong><span>kg CO₂ reduced</span></div>
+        <div><strong>{{ carbonSummary.fuel }}</strong><span>litres saved</span></div>
+      </div>
+      <p class="impact-empty" *ngIf="!carbonSummary.rides">Complete a shared ride to start building your impact history.</p>
+    </section>
+
     <section class="results">
       <h3 *ngIf="searched">Available rides ({{ results.length }})</h3>
       <div *ngIf="searched && results.length === 0" class="card text-center muted">No rides found. Try changing your search.</div>
@@ -96,7 +112,20 @@ import { ToastService } from './toast.service';
         </div>
       </div>
     </section>
-  `
+  `,
+  styles: [`
+    `.impact-card { display: grid; grid-template-columns: 1.25fr 2fr auto; gap: 20px; align-items: center; padding: 22px; border: 1px solid rgba(16,185,129,.18); border-radius: 18px; background: linear-gradient(120deg, #ecfdf5, #eff6ff); }
+    .impact-kicker { color: #0f766e; font-size: .68rem; font-weight: 800; letter-spacing: .12em; }
+    .impact-card h3 { margin: 6px 0 4px; color: #0f172a; }
+    .impact-card p { margin: 0; color: #475569; }
+    .impact-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .impact-metrics div { display: grid; gap: 4px; padding-left: 14px; border-left: 1px solid rgba(15,118,110,.16); }
+    .impact-metrics strong { color: #0f172a; font-size: 1.3rem; }
+    .impact-metrics span, .impact-empty { color: #475569; font-size: .76rem; }
+    .impact-empty { max-width: 150px; }
+    @media (max-width: 900px) { .impact-card { grid-template-columns: 1fr; } .impact-empty { max-width: none; } }
+    @media (max-width: 560px) { .impact-metrics { grid-template-columns: repeat(2, 1fr); } }
+  `]
 })
 export class HomeComponent {
   from = '';
@@ -107,9 +136,10 @@ export class HomeComponent {
   results: Ride[] = [];
   searched = false;
   myBookings: Array<{ id: string; rideId: string; seats: number; status: string; ride?: Ride | undefined }> = [];
+  carbonSummary = { rides: 0, distance: '0', co2: '0', fuel: '0' };
   
 
-  constructor(private data: MockDataService, private router: Router, private auth: AuthService, private toast: ToastService) {
+  constructor(private data: MockDataService, private router: Router, private auth: AuthService, private toast: ToastService, private carbonApi: CarbonApiService) {
     // ensure passenger-only access
     const s = this.auth.current;
     if (!s) {
@@ -120,6 +150,21 @@ export class HomeComponent {
     // do not show results until user searches; preload nothing
     this.searched = false;
     this.loadLocationData();
+    this.loadCarbonImpact();
+  }
+
+  private loadCarbonImpact(): void {
+    this.carbonApi.myFootprint().subscribe({
+      next: rows => {
+        this.carbonSummary = {
+          rides: rows.length,
+          distance: rows.reduce((sum, row) => sum + Number(row.distanceKm || 0), 0).toFixed(0),
+          co2: rows.reduce((sum, row) => sum + Number(row.co2ReducedKg || 0), 0).toFixed(1),
+          fuel: rows.reduce((sum, row) => sum + Number(row.fuelSavedLitres || 0), 0).toFixed(1)
+        };
+      },
+      error: () => { this.carbonSummary = { rides: 0, distance: '0', co2: '0', fuel: '0' }; }
+    });
   }
 
   states: string[] = [];

@@ -78,13 +78,14 @@ import { Subscription } from 'rxjs';
             <label>Date</label>
             <input type="date" formControlName="date" [min]="today" required />
           </div>
-          <div class="field">
+          <div class="field" *ngIf="!searchForm.get('parcelSearch')?.value">
             <label>Passengers</label>
             <select formControlName="seats" required>
               <option value="">Select seats</option>
               <option *ngFor="let i of [1,2,3,4,5,6]" [value]="i">{{ i }} {{ i === 1 ? 'Seat' : 'Seats' }}</option>
             </select>
           </div>
+          <label class="parcel-search-toggle"><input type="checkbox" formControlName="parcelSearch" (change)="toggleParcelSearch()" /> Send a parcel</label>
           <button type="submit" class="btn btn-primary search-button" [disabled]="!searchForm.valid || isLoading">
             {{ isLoading ? 'Searching...' : 'Search' }}
           </button>
@@ -175,6 +176,7 @@ import { Subscription } from 'rxjs';
             <!-- Action Button -->
             <div class="ride-footer">
               <button *ngIf="canBook(ride)" class="btn btn-primary" (click)="bookRide(ride)">View / Book</button>
+              <button *ngIf="isParcelSearch && ride.acceptParcel" class="btn btn-secondary" type="button" (click)="sendParcel(ride)">Send parcel</button>
               <span *ngIf="!canBook(ride)" class="full-status" aria-label="Requested seats are unavailable">FULL</span>
               <span *ngIf="ride.availableSeats > 0 && !canBook(ride)" class="full-status availability-status">
                 Only {{ ride.availableSeats }} seat(s) available
@@ -777,6 +779,18 @@ import { Subscription } from 'rxjs';
     }
 
     @media (max-width: 480px) {
+      .page-header {
+        padding: 14px 6px;
+      }
+
+      .page-title {
+        font-size: 28px;
+      }
+
+      .page-sub {
+        font-size: 13px;
+      }
+
       .search-form {
         grid-template-columns: 1fr;
       }
@@ -960,7 +974,25 @@ export class MultiStopRideSearchComponent implements OnInit {
       toLongitude: [null, Validators.required],
       date: ['', Validators.required],
       seats: ['', Validators.required]
+      , parcelSearch: [false]
     });
+
+    this.toggleParcelSearch();
+  }
+
+  isParcelSearch = false;
+
+  toggleParcelSearch(): void {
+    this.isParcelSearch = !!this.searchForm.get('parcelSearch')?.value;
+    const seats = this.searchForm.get('seats');
+    if (this.isParcelSearch) {
+      seats?.clearValidators();
+      seats?.setValue(1, { emitEvent: false });
+    } else {
+      seats?.setValidators(Validators.required);
+      if (!seats?.value) seats?.setValue('', { emitEvent: false });
+    }
+    seats?.updateValueAndValidity({ emitEvent: false });
   }
 
   /**
@@ -1004,6 +1036,7 @@ export class MultiStopRideSearchComponent implements OnInit {
       toLongitude: Number(this.searchForm.get('toLongitude')?.value),
       date: requestedDate,
       seats: parseInt(this.searchForm.get('seats')?.value, 10),
+      parcelSearch: this.isParcelSearch,
       includeFull: true
     };
 
@@ -1080,5 +1113,15 @@ export class MultiStopRideSearchComponent implements OnInit {
         seats: this.searchForm.get('seats')?.value
       }
     });
+  }
+
+  sendParcel(ride: RideSearchResult): void {
+    this.router.navigate(['/parcel/request'], { queryParams: {
+      rideId: ride.rideId,
+      pickupAddress: ride.fromLocation,
+      dropAddress: ride.toLocation,
+      date: ride.travelDate,
+      ownerName: ride.driverName
+    }});
   }
 }

@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { MockDataService, Owner, Ride } from './mock-data.service';
 import { AuthService } from './auth.service';
 import { ToastService } from './toast.service';
+import { CarbonApiService } from './services/carbon-api.service';
 
 interface Booking {
   id: string;
@@ -42,9 +43,37 @@ interface Booking {
       </div>
     </section>
 
+    <section class="impact-strip">
+      <div>
+        <span class="impact-kicker">LIVE IMPACT</span>
+        <h3>Shared-ride carbon savings</h3>
+        <p class="muted">Calculated from your completed ride contributions.</p>
+      </div>
+      <div class="impact-metrics">
+        <div><strong>{{ carbonSummary.rides }}</strong><span>rides</span></div>
+        <div><strong>{{ carbonSummary.distance }}</strong><span>km shared</span></div>
+        <div><strong>{{ carbonSummary.co2 }}</strong><span>kg CO₂ reduced</span></div>
+        <div><strong>{{ carbonSummary.fuel }}</strong><span>litres saved</span></div>
+      </div>
+      <div class="impact-empty" *ngIf="!carbonSummary.rides">Impact data will appear after a ride is calculated.</div>
+    </section>
+
     <!-- Include create ride form here for quick access -->
      <!-- <app-owner-create-ride></app-owner-create-ride> -->
-  `
+  `,
+  styles: [`
+    .impact-strip { display: grid; grid-template-columns: 1.2fr 2fr auto; gap: 20px; align-items: center; margin-top: 18px; padding: 22px; border: 1px solid rgba(16,185,129,.18); border-radius: 18px; background: linear-gradient(120deg, #ecfdf5, #eff6ff); }
+    .impact-kicker { color: #0f766e; font-size: .7rem; font-weight: 800; letter-spacing: .12em; }
+    .impact-strip h3 { margin: 5px 0; color: #0f172a; }
+    .impact-strip p { margin: 0; }
+    .impact-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .impact-metrics div { display: grid; gap: 4px; padding-left: 14px; border-left: 1px solid rgba(15,118,110,.16); }
+    .impact-metrics strong { color: #0f172a; font-size: 1.35rem; }
+    .impact-metrics span, .impact-empty { color: #475569; font-size: .78rem; }
+    .impact-empty { max-width: 150px; }
+    @media (max-width: 900px) { .impact-strip { grid-template-columns: 1fr; } .impact-empty { max-width: none; } }
+    @media (max-width: 560px) { .impact-metrics { grid-template-columns: repeat(2, 1fr); } }
+  `]
 })
 export class OwnerDashboardComponent {
   owners: Owner[] = [];
@@ -59,9 +88,25 @@ export class OwnerDashboardComponent {
   price = 0;
   carModel = '';
   bookings: Booking[] = [];
+  carbonSummary = { rides: 0, distance: '0', co2: '0', fuel: '0' };
 
-  constructor(private data: MockDataService, private auth: AuthService, private toast: ToastService) {
+  constructor(private data: MockDataService, private auth: AuthService, private toast: ToastService, private carbonApi: CarbonApiService) {
     this.load();
+    this.loadCarbonImpact();
+  }
+
+  private loadCarbonImpact(): void {
+    this.carbonApi.myFootprint().subscribe({
+      next: rows => {
+        this.carbonSummary = {
+          rides: rows.length,
+          distance: rows.reduce((sum, row) => sum + Number(row.distanceKm || 0), 0).toFixed(0),
+          co2: rows.reduce((sum, row) => sum + Number(row.co2ReducedKg || 0), 0).toFixed(1),
+          fuel: rows.reduce((sum, row) => sum + Number(row.fuelSavedLitres || 0), 0).toFixed(1)
+        };
+      },
+      error: () => { this.carbonSummary = { rides: 0, distance: '0', co2: '0', fuel: '0' }; }
+    });
   }
 
   focusCreate() {

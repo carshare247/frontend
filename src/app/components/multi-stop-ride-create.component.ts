@@ -181,6 +181,13 @@ import { Subscription } from 'rxjs';
                   Show only to female passengers
                 </label>
               </div>
+              <div class="field checkbox-field parcel-opt-in">
+                <label>
+                  <input type="checkbox" formControlName="acceptParcel" />
+                  Accept parcel requests on this route
+                </label>
+                <small>Passengers can send parcels only when this is enabled.</small>
+              </div>
             </div>
           </div>
 
@@ -697,7 +704,8 @@ export class MultiStopRideCreateComponent implements OnInit {
       price: [null, [Validators.min(1)]],
       carModel: [''],
       totalSeats: [4, [Validators.required, Validators.min(1), Validators.max(8)]],
-      femaleOnly: [false]
+      femaleOnly: [false],
+      acceptParcel: [false]
     });
 
     // Watch for stop count changes to generate segment prices
@@ -944,7 +952,8 @@ export class MultiStopRideCreateComponent implements OnInit {
       segmentPrices,
       carModel: this.rideForm.get('carModel')?.value,
       totalSeats: this.rideForm.get('totalSeats')?.value,
-      femaleOnly: this.rideForm.get('femaleOnly')?.value
+      femaleOnly: this.rideForm.get('femaleOnly')?.value,
+      acceptParcel: this.rideForm.get('acceptParcel')?.value
     };
 
     this.rideService.createMultiStopRide(request).subscribe({
