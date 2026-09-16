@@ -179,6 +179,9 @@ import { ToastService } from './toast.service';
       .otp-form { display: flex; gap: 10px; max-width: 520px; }
       .otp-form input { flex: 1; min-width: 0; border: 1px solid rgba(148,163,184,.28); border-radius: 12px; padding: 12px 14px; font: inherit; letter-spacing: .18em; }
       @media (max-width: 900px) { .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .panel-grid { grid-template-columns: 1fr; } }
+      @media (max-width: 820px) {
+        .summary-grid { grid-template-columns: 1fr 1fr; }
+      }
       @media (max-width: 640px) {
         .tracking-shell { gap: 14px; }
         .tracking-hero { display: grid; gap: 12px; padding: 18px; border-radius: 16px; }

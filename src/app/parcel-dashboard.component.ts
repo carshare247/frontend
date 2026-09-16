@@ -320,6 +320,9 @@ interface ParcelRequestItem {
       .detail-wide { grid-column: 1 / -1; }
       .details-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(148,163,184,.16); }
       @media (max-width: 900px) { .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .panel-grid { grid-template-columns: 1fr; } }
+      @media (max-width: 820px) {
+        .two-up { grid-template-columns: 1fr; }
+      }
       @media (max-width: 640px) {
         .parcel-shell { gap: 14px; }
         .parcel-hero { display: grid; gap: 14px; padding: 18px; border-radius: 16px; }
@@ -345,7 +348,6 @@ interface ParcelRequestItem {
         .meta-row { gap: 6px; }
         .details-grid { grid-template-columns: 1fr; }
         .details-actions { align-items: flex-start; flex-direction: column; }
-        .two-up { grid-template-columns: 1fr; }
         .table-head { display: none; }
         .table-row { grid-template-columns: 1fr; padding: 12px 0; }
         .inline-actions { flex-direction: column; align-items: flex-start; }
