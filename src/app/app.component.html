@@ -45,8 +45,10 @@
       <a routerLink="/bookings" routerLinkActive="active" *ngIf="current?.role==='passenger'">Booked Rides <span
           class="badge" *ngIf="bookingsCount>0" style="margin-left:8px">{{bookingsCount}}</span></a>
       <a routerLink="/profile" routerLinkActive="active" *ngIf="current?.role==='passenger'">Profile</a>
+        <a routerLink="/parcel/dashboard" routerLinkActive="active" *ngIf="current?.role==='passenger'">Parcel Delivery</a>
       <a routerLink="/owner/dashboard" routerLinkActive="active" *ngIf="current?.role==='owner'">Dashboard</a>
       <a *ngIf="current?.role==='owner'" routerLink="/owner/profile" routerLinkActive="active">Profile</a>
+      <a routerLink="/owner/parcel-dashboard" routerLinkActive="active" *ngIf="current?.role==='owner'">Parcel Delivery</a>
       <a routerLink="/owner/my-rides" routerLinkActive="active" *ngIf="current?.role==='owner'">My Rides</a>
       <!-- <a routerLink="/owner/create-ride" routerLinkActive="active" *ngIf="current?.role==='owner'">Create Ride</a> -->
       <a routerLink="/owner/requests" routerLinkActive="active" *ngIf="current?.role==='owner'">Booking Requests</a>
@@ -126,8 +128,10 @@
         <li *ngIf="current?.role==='passenger'"><a (click)="navigate('/home')">Home</a></li>
         <li *ngIf="current?.role==='passenger'"><a (click)="navigate('/bookings')">Booked Rides</a></li>
         <li *ngIf="current?.role==='passenger'"><a (click)="navigate('/profile')">Profile</a></li>
+        <li *ngIf="current?.role==='passenger'"><a (click)="navigate('/parcel/dashboard')">Parcel Delivery</a></li>
         <li *ngIf="current?.role==='owner'"><a (click)="navigate('/owner/dashboard')">Dashboard</a></li>
         <li *ngIf="current?.role==='owner'"><a (click)="navigate('/owner/profile')">Profile</a></li>
+        <li *ngIf="current?.role==='owner'"><a (click)="navigate('/owner/parcel-dashboard')">Parcel Delivery</a></li>
         <li *ngIf="current?.role==='owner'"><a (click)="navigate('/owner/my-rides')">My Rides</a></li>
         <li *ngIf="current?.role==='owner'"><a (click)="navigate('/owner/requests')">Booking Requests</a></li>
         <li *ngIf="current?.role !== 'admin'"><a (click)="navigate('/support')">Support</a></li>

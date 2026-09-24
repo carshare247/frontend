@@ -126,6 +126,18 @@ export class MockDataService {
     );
   }
 
+  getAdminParcels(): Observable<any[]> {
+    return this.http.get<ApiResponse<any[]>>(`${this.apiUrl}/admin/parcels`).pipe(map(response => response.data || []));
+  }
+
+  getAdminParcelSettings(): Observable<any> {
+    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/admin/parcels/settings`).pipe(map(response => response.data || {}));
+  }
+
+  updateAdminParcelSettings(deliveryFee: number): Observable<any> {
+    return this.http.put<ApiResponse<any>>(`${this.apiUrl}/admin/parcels/settings`, { deliveryFee }).pipe(map(response => response.data || {}));
+  }
+
   private isRideDateAllowed(date: string): boolean {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) return false;
     const today = new Date();
